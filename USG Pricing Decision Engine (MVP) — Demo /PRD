@@ -1,0 +1,274 @@
+1) Objetivo del documento
+Definir el alcance del MVP-demo para una solución de Pricing Decision Engine B2B para USG, enfocada inicialmente en elasticidades y recomendaciones de precio para distribuidores nacionales en México, con potencial de evolucionar hacia una plataforma más amplia de inteligencia comercial.
+El objetivo del MVP es materializar una solución de Pricing Decision Engine B2B sell-in, donde las decisiones se toman sobre precios a distribuidores, rebates, territorios y segmentación de clientes.
+Este MVP se construye como prototipo visual / mock funcional: interfaz real o similar, con datos simulados o parcialmente reales, capaz de mostrar el flujo analítico y la narrativa de valor para USG.
+
+2) Principios de diseño (no negociables)
+1.	Decision-first, not report-first: la herramienta debe llevar a decisiones, no solo mostrar dashboards.
+2.	B2B-native: el diseño debe reflejar el negocio de USG hacia distribuidores, no lógica retail B2C pura.
+3.	Multi-level drill-down: toda vista crítica debe poder abrirse por canal, territorio, segmento, distribuidor y SKU.
+4.	Backward + forward looking: el sistema debe mostrar tanto lectura histórica como escenarios predictivos.
+5.	Actionability over complexity: cada vista debe terminar en una recomendación o hipótesis accionable.
+6.	Configuración progresiva: el MVP puede operar con datasets parciales, pero debe ser extensible a sell-out, competencia y optimización de rebates.
+7.	Modularidad: elasticidades es el punto de entrada, no el límite del producto.
+
+3) Alcance MVP (cerrado)
+3.1 Usuarios y roles
+Usuario principal del MVP
+•	Equipo de Product Economics / Sales Administration / Pricing / Commercial Excellence de USG.
+Usuarios secundarios
+•	Dirección comercial.
+•	Liderazgo de canal distribuidores.
+•	Finanzas / Revenue Management.
+•	Equipos regionales de ventas.
+Fuera de MVP
+•	Multi-tenant externo.
+•	Roles complejos y permisos avanzados.
+•	Workflows de aprobación de precios.
+3.2 Navegación MVP (4 secciones)
+1.	Overview
+•	Resumen ejecutivo del portafolio analizado.
+•	KPIs clave: volumen, ingreso, margen, cobertura modelada, elasticidad promedio, precio neto.
+2.	History / Descriptive Elasticities
+•	Lectura backward looking.
+•	Evolución de precio, volumen, rebates y passthrough.
+3.	Predictive Pricing / Scenario Simulator
+•	Simulación de cambios de precio.
+•	Curvas precio-volumen-margen.
+4.	Recommendations
+•	Recomendaciones de precio por segmento de distribuidores, territorio, categoría y SKU.
+3.3 Dominio de datos mínimo (para mock)
+•	Cliente: customer_id, customer_name, customer_type, segmento (oro/plata/bronce), región, estado, municipio.
+•	Sucursal / punto de entrega: branch_id, customer_id, sucursal, dirección, municipio, estado.
+•	Producto: sku_id, sku_name, categoría, subcategoría, atributos técnicos.
+•	Transacción sell-in: fecha, customer_id, branch_id, sku_id, volumen, precio lista, descuento, rebate, precio neto.
+•	Territorio: región comercial, estado, municipio.
+•	Escenario: escenario_id, nombre, supuestos, rango de cambio de precio.
+•	Opcional sell-out: fecha, distribuidor, sku, precio de reventa, volumen, inventario o proxy.
+•	Opcional competencia: competidor, producto comparable, precio, territorio, fecha.
+3.4 Jerarquías mínimas de navegación
+Canal
+•	Distribuidores nacionales
+•	(Preparado para: retail especializado, proyectos)
+Subdivisión del canal distribuidores
+•	Segmento de cliente (oro / plata / bronce)
+•	Distribuidor (nombre)
+•	Sucursal
+Territorio
+•	Región
+•	Estado
+•	Municipio
+Portafolio
+•	Categoría
+•	Subcategoría
+•	SKU
+3.5 Estados mínimos del sistema
+Scope del modelado
+•	En scope
+•	Parcialmente modelado
+•	Fuera de scope
+Calidad analítica
+•	Suficiente para lectura histórica
+•	Suficiente para predicción
+•	Insuficiente / requiere más datos
+
+4) Datos mock sugeridos (para recorrer la demo)
+•	12–24 meses de historial sell-in.
+•	86 SKUs totales en el portafolio actual de USG, distribuidos en 10 categorías.
+•	Para el storytelling del MVP, se puede enfocar la navegación inicial en una parte representativa del portafolio, manteniendo visible la cobertura total de 86 SKUs.
+•	3 niveles de segmentación de distribuidores: oro, plata, bronce.
+•	8–10 territorios o clusters regionales.
+•	20–30 distribuidores ejemplo en demo, usando una muestra de la base nacional.
+•	Portafolio total del MVP, con cobertura visible de las 10 categorías:
+•	Tableros (11)
+•	Plafones (17)
+•	Suspensiones (11)
+•	Adhesivos (9)
+•	Perfiles metálicos (11)
+•	Yesos (4)
+•	Accesorios (14)
+•	Cintas (2)
+•	Mallas de refuerzo (1)
+•	Membranas impermeables (1)
+•	2–3 escenarios por SKU/categoría.
+•	1 vista con sell-out opcional para mostrar cómo se extendería el modelo.
+•	1 vista opcional de competencia, claramente marcada como dependiente de disponibilidad de datos.
+
+5) Módulos / Journeys del MVP
+Módulo 1 — “Entender qué ha pasado”
+Intención del MVP
+Dar visibilidad histórica de precios, volumen y margen por canal, territorio, segmento de distribuidor, distribuidor y SKU.
+User stories
+1.	Como usuario, quiero ver cómo han cambiado precio y volumen por categoría/SKU en el tiempo.
+2.	Como usuario, quiero entender elasticidades históricas por segmento de distribuidores.
+3.	Como usuario, quiero abrir el análisis por territorio para identificar diferencias regionales.
+Criterios de aceptación
+•	El usuario puede filtrar por canal, territorio, segmento, distribuidor, categoría y SKU.
+•	El usuario puede ver precio lista, rebate, precio neto, volumen e ingreso histórico.
+•	El sistema muestra elasticidad histórica donde haya suficiente robustez estadística.
+•	El sistema muestra claramente cuándo una lectura es confiable y cuándo no.
+
+Módulo 2 — “Simular cambios de precio”
+Intención del MVP
+Permitir al usuario modelar escenarios predictivos de cambio de precio y estimar impacto en volumen, ingreso y margen.
+User stories
+1.	Como usuario, quiero simular un aumento o disminución de precio por categoría, SKU o segmento.
+2.	Como usuario, quiero ver curvas predictivas de precio-volumen-margen.
+3.	Como usuario, quiero comparar un escenario contra un escenario base.
+Criterios de aceptación
+•	El sistema permite crear escenarios custom.
+•	El usuario puede cambiar precios por agregación elegida.
+•	El sistema recalcula volumen, ingreso y margen esperados.
+•	Se visualiza la elasticidad predictiva asociada al nodo analizado.
+•	Los escenarios pueden exportarse.
+
+Módulo 3 — “Recomendar precio por grupo de distribuidores”
+Intención del MVP
+Traducir analítica en decisiones accionables por segmento de distribuidores.
+User stories
+1.	Como usuario, quiero recibir recomendaciones de precio por grupo de distribuidores.
+2.	Como usuario, quiero saber en qué segmentos hay headroom de precio.
+3.	Como usuario, quiero distinguir entre oportunidades de price increase y zonas donde conviene proteger volumen.
+Criterios de aceptación
+•	El sistema genera recomendaciones por segmento (oro/plata/bronce).
+•	Las recomendaciones se pueden abrir por territorio y por distribuidor.
+•	Cada recomendación viene acompañada por racional: elasticidad, margen, volumen, sensibilidad histórica.
+•	El sistema puede generar un informe ejecutivo exportable.
+
+Módulo 4 — “Entender passthrough y rebates”
+Intención del MVP
+Reflejar que en B2B el precio efectivo no es solo precio de lista, sino precio neto después de rebates.
+User stories
+1.	Como usuario, quiero entender el efecto de rebates sobre el precio neto.
+2.	Como usuario, quiero comparar sensibilidad usando precio lista vs precio neto.
+3.	Como usuario, quiero identificar segmentos donde el rebate puede estar sobredimensionado.
+Criterios de aceptación
+•	El sistema distingue precio lista, descuento/rebate y precio neto.
+•	La lectura histórica muestra la relación entre rebate y volumen.
+•	Queda preparado el terreno para un futuro módulo de rebate optimization.
+
+Módulo 5 — “Extender el análisis a sell-out cuando exista”
+Intención del MVP
+Mostrar que la solución puede evolucionar hacia una visión integrada sell-in + sell-out.
+User stories
+1.	Como usuario, quiero incorporar sell-out si un distribuidor o retailer lo comparte.
+2.	Como usuario, quiero modelar elasticidades sell-out cuando exista esa información.
+3.	Como usuario, quiero comparar passthrough entre sell-in y sell-out.
+Criterios de aceptación
+•	El sistema puede activar una vista opcional de sell-out.
+•	Cuando hay sell-out, se pueden calcular elasticidades adicionales.
+•	La UI deja claro qué métricas provienen de sell-in y cuáles de sell-out.
+
+Módulo 6 — “Nivel de confianza de las predicciones”
+Intención del MVP
+Hacer explícito el nivel de robustez de cada predicción y permitir al usuario distinguir entre recomendaciones de alta, media o baja confianza.
+User stories
+1.	Como usuario, quiero ver el nivel de confianza de cada predicción antes de tomar una decisión.
+2.	Como usuario, quiero entender qué nodos del portafolio tienen suficiente información para una recomendación robusta.
+3.	Como usuario, quiero detectar en qué territorios, segmentos o SKUs el modelo requiere más datos o debe usarse con cautela.
+Criterios de aceptación
+•	El sistema muestra un nivel de confianza visible en cada predicción y recomendación.
+•	El usuario puede filtrar o priorizar recomendaciones por nivel de confianza.
+•	El sistema comunica claramente las principales variables que explican la robustez del resultado.
+•	El nivel de confianza se puede abrir por canal, territorio, segmento, distribuidor, categoría y SKU.
+
+Módulo 7 — “Competidores (condicional)”
+Intención del MVP
+Preparar un módulo de competencia solo si existe información suficientemente robusta.
+User stories
+1.	Como usuario, quiero estimar impacto competitivo cuando haya datos comparables.
+2.	Como usuario, quiero ver cross effects solo si la calidad de datos lo permite.
+Criterios de aceptación
+•	El módulo aparece solo si existe data de competencia.
+•	Se comunica explícitamente que sin data competitiva no se estiman cross elasticities externas robustas.
+•	Se pueden mostrar placeholders o wireframes de evolución futura.
+
+6) Incluido vs excluido
+Incluido (MVP)
+•	Elasticidades históricas por canal, territorio, categoría, SKU.
+•	Elasticidades predictivas por canal, territorio, categoría, SKU.
+•	Drill-down de distribuidores: segmento → distribuidor → sucursal.
+•	Recomendaciones de precio por grupo de distribuidores.
+•	Distinción entre precio lista, rebate y precio neto.
+•	Escenarios comparables vs base.
+•	Módulo explícito de nivel de confianza de las predicciones y recomendaciones.
+•	Exportación de vistas e informe ejecutivo.
+Excluido (por ahora)
+•	Motor completo de rebate optimization.
+•	Competidores sin data robusta.
+•	Optimización multiobjetivo compleja.
+•	Integración transaccional en tiempo real.
+•	Workflow de aprobación de precios.
+•	Módulo de promociones sofisticado.
+•	Recomendación automática explicable con IA generativa integrada.
+
+7) Resultado esperado del MVP (qué debe sentir el usuario)
+•	“Ya no estoy viendo solo reportes; ya puedo tomar decisiones.”
+•	“Entiendo qué SKUs y qué distribuidores son más sensibles.”
+•	“Puedo recomendar ajustes de precio con sustento analítico.”
+•	“Puedo abrir la película por territorio y por tipo de distribuidor.”
+•	“Veo cómo esta solución podría crecer a una plataforma mayor de pricing y commercial intelligence.”
+
+8) Hipótesis de valor a validar
+1.	USG obtiene más valor de una herramienta B2B específica que de una adaptación superficial de una lógica B2C.
+2.	Las decisiones de precio por segmento de distribuidor son más valiosas que una recomendación promedio nacional.
+3.	Incluir rebates mejora significativamente la relevancia del análisis.
+4.	Una vista combinada de backward-looking + predictive pricing acelera la adopción interna.
+5.	El valor de negocio aumenta materialmente cuando el análisis se puede abrir por territorio.
+6.	Si se incorpora sell-out, se enriquece el entendimiento del passthrough y la capacidad de decisión.
+
+9) Métricas de éxito del MVP
+Métricas de adopción
+•	Número de usuarios que usan el simulador.
+•	Número de escenarios creados.
+•	Frecuencia de uso por mes.
+Métricas analíticas
+•	% del portafolio/canal en scope modelable.
+•	% de recomendaciones con nivel de confianza suficiente.
+•	distribución de predicciones por nivel de confianza (alto / medio / bajo).
+•	Cobertura por territorio y segmento.
+Métricas de negocio
+•	uplift estimado en margen por recomendaciones aplicadas.
+•	mejora en price realization.
+•	reducción de rebates ineficientes.
+•	identificación de oportunidades de price increase / defense.
+
+10) Estructura sugerida del informe ejecutivo de salida
+1.	Resumen ejecutivo
+•	hallazgos clave
+•	oportunidades de pricing
+•	riesgos
+2.	Oportunidades por segmento de distribuidor
+•	oro / plata / bronce
+3.	Oportunidades por territorio
+•	regiones / estados / municipios prioritarios
+4.	Oportunidades por categoría y SKU
+5.	Escenarios recomendados
+•	base vs recomendado
+6.	Sensibilidad y riesgos
+7.	Anexo metodológico
+•	supuestos
+•	cobertura
+•	limitaciones
+
+11) Roadmap posterior al MVP
+Fase 2
+•	Rebate optimization.
+•	Better segmentation / clustering.
+•	Sell-out integration.
+Fase 3
+•	Competitor intelligence.
+•	Portfolio mix / assortment insights.
+•	Recommendation engine más automatizado.
+Fase 4
+•	Commercial intelligence platform completa.
+•	Integración con planeación comercial / pricing governance.
+•	Más casos de uso: promociones, mix, trade terms, arquitectura de precios.
+
+12) Decisiones explícitas para evitar scope creep
+•	El MVP se enfoca primero en distribuidores nacionales en México.
+•	El MVP no intenta cubrir todo el universo de canales desde el día 1.
+•	El MVP prioriza elasticidades + escenarios + recomendaciones.
+•	Competidores solo entra con datos robustos.
+•	Sell-out es extensión opcional, no requisito bloqueante.
+•	El verdadero entregable no es un dashboard: es una capacidad de decisión de precio
