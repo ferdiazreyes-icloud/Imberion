@@ -1,0 +1,175 @@
+from fastapi import APIRouter, Depends
+from sqlalchemy import func, distinct
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import Transaction, Customer, Product, Territory, Elasticity
+from app.schemas.analytics import KPI, OverviewResponse
+
+router = APIRouter()
+
+
+@router.get("/overview", response_model=OverviewResponse)
+def get_overview(
+    segment: str | None = None,
+    territory_id: int | None = None,
+    region: str | None = None,
+    category_id: int | None = None,
+    period_start: str | None = None,
+    period_end: str | None = None,
+    db: Session = Depends(get_db),
+):
+    q = db.query(
+        func.sum(Transaction.volume).label("total_volume"),
+        func.sum(Transaction.revenue).label("total_revenue"),
+        func.avg(Transaction.net_price).label("avg_net_price"),
+        func.avg(Transaction.rebate).label("avg_rebate"),
+        func.count(distinct(Transaction.customer_id)).label("n_customers"),
+        func.count(distinct(Transaction.product_id)).label("n_skus"),
+        func.count(distinct(Transaction.territory_id)).label("n_territories"),
+    )
+
+    if segment:
+        q = q.join(Customer).filter(Customer.segment == segment)
+    if territory_id:
+        q = q.filter(Transaction.territory_id == territory_id)
+    if region:
+        q = q.join(Territory).filter(Territory.region == region)
+    if category_id:
+        q = q.join(Product).filter(Product.category_id == category_id)
+    if period_start:
+        q = q.filter(Transaction.date >= period_start)
+    if period_end:
+        q = q.filter(Transaction.date <= period_end)
+
+    row = q.one()
+
+    # Average elasticity
+    eq = db.query(func.avg(Elasticity.coefficient)).filter(Elasticity.type == "historical")
+    avg_elasticity = eq.scalar() or 0
+
+    # Modeled coverage
+    total_products = db.query(func.count(Product.id)).scalar()
+    modeled_products = db.query(func.count(distinct(Elasticity.node_id))).filter(
+        Elasticity.node_type == "sku"
+    ).scalar()
+    coverage = (modeled_products / total_products * 100) if total_products else 0
+
+    return OverviewResponse(
+        total_volume=KPI(label="Volumen Total", value=float(row.total_volume or 0), unit="unidades"),
+        total_revenue=KPI(label="Ingreso Total", value=float(row.total_revenue or 0), unit="MXN"),
+        avg_net_price=KPI(label="Precio Neto Promedio", value=round(float(row.avg_net_price or 0), 2), unit="MXN"),
+        avg_elasticity=KPI(label="Elasticidad Promedio", value=round(float(avg_elasticity), 3)),
+        modeled_coverage_pct=KPI(label="Cobertura Modelada", value=round(coverage, 1), unit="%"),
+        avg_rebate=KPI(label="Rebate Promedio", value=round(float(row.avg_rebate or 0), 2), unit="MXN"),
+        total_customers=int(row.n_customers or 0),
+        total_skus=int(row.n_skus or 0),
+        total_territories=int(row.n_territories or 0),
+    )
+
+
+@router.get("/overview/by-category")
+def overview_by_category(
+    segment: str | None = None,
+    territory_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    from app.models import Category
+
+    q = db.query(
+        Category.id,
+        Category.name,
+        func.sum(Transaction.volume).label("volume"),
+        func.sum(Transaction.revenue).label("revenue"),
+        func.avg(Transaction.net_price).label("avg_net_price"),
+        func.count(distinct(Transaction.product_id)).label("n_skus"),
+    ).join(Product, Product.id == Transaction.product_id).join(Category, Category.id == Product.category_id)
+
+    if segment:
+        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
+    if territory_id:
+        q = q.filter(Transaction.territory_id == territory_id)
+
+    rows = q.group_by(Category.id, Category.name).all()
+
+    return [
+        {
+            "category_id": r.id,
+            "category_name": r.name,
+            "volume": float(r.volume or 0),
+            "revenue": float(r.revenue or 0),
+            "avg_net_price": round(float(r.avg_net_price or 0), 2),
+            "n_skus": r.n_skus,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/overview/by-segment")
+def overview_by_segment(
+    category_id: int | None = None,
+    territory_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    q = db.query(
+        Customer.segment,
+        func.sum(Transaction.volume).label("volume"),
+        func.sum(Transaction.revenue).label("revenue"),
+        func.avg(Transaction.net_price).label("avg_net_price"),
+        func.avg(Transaction.rebate).label("avg_rebate"),
+        func.count(distinct(Transaction.customer_id)).label("n_customers"),
+    ).join(Customer, Customer.id == Transaction.customer_id)
+
+    if category_id:
+        q = q.join(Product, Product.id == Transaction.product_id).filter(Product.category_id == category_id)
+    if territory_id:
+        q = q.filter(Transaction.territory_id == territory_id)
+
+    rows = q.group_by(Customer.segment).all()
+
+    return [
+        {
+            "segment": r.segment,
+            "volume": float(r.volume or 0),
+            "revenue": float(r.revenue or 0),
+            "avg_net_price": round(float(r.avg_net_price or 0), 2),
+            "avg_rebate": round(float(r.avg_rebate or 0), 2),
+            "n_customers": r.n_customers,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/overview/by-territory")
+def overview_by_territory(
+    segment: str | None = None,
+    category_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    q = db.query(
+        Territory.id,
+        Territory.region,
+        Territory.state,
+        func.sum(Transaction.volume).label("volume"),
+        func.sum(Transaction.revenue).label("revenue"),
+        func.avg(Transaction.net_price).label("avg_net_price"),
+    ).join(Territory, Territory.id == Transaction.territory_id)
+
+    if segment:
+        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
+    if category_id:
+        q = q.join(Product, Product.id == Transaction.product_id).filter(Product.category_id == category_id)
+
+    rows = q.group_by(Territory.id, Territory.region, Territory.state).all()
+
+    return [
+        {
+            "territory_id": r.id,
+            "region": r.region,
+            "state": r.state,
+            "volume": float(r.volume or 0),
+            "revenue": float(r.revenue or 0),
+            "avg_net_price": round(float(r.avg_net_price or 0), 2),
+        }
+        for r in rows
+    ]
