@@ -1,4 +1,5 @@
 from datetime import date as date_type
+from typing import Optional
 
 from sqlalchemy import Integer, Float, Date, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -12,7 +13,7 @@ class Transaction(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     date: Mapped[date_type] = mapped_column(Date, index=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True)
-    branch_id: Mapped[int | None] = mapped_column(ForeignKey("branches.id"), nullable=True)
+    branch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("branches.id"), nullable=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
     territory_id: Mapped[int] = mapped_column(ForeignKey("territories.id"), index=True)
     volume: Mapped[float] = mapped_column(Float)

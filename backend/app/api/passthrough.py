@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -10,8 +12,8 @@ router = APIRouter()
 
 @router.get("/passthrough/by-segment")
 def passthrough_by_segment(
-    category_id: int | None = None,
-    territory_id: int | None = None,
+    category_id: Optional[int] = None,
+    territory_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -49,8 +51,8 @@ def passthrough_by_segment(
 
 @router.get("/passthrough/by-category")
 def passthrough_by_category(
-    segment: str | None = None,
-    territory_id: int | None = None,
+    segment: Optional[str] = None,
+    territory_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -87,8 +89,8 @@ def passthrough_by_category(
 
 @router.get("/passthrough/trends")
 def passthrough_trends(
-    segment: str | None = None,
-    category_id: int | None = None,
+    segment: Optional[str] = None,
+    category_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     from sqlalchemy import extract

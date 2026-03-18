@@ -5,6 +5,7 @@ Price elasticity of demand: %ΔQ / %ΔP
 Estimated via log-log regression: ln(Q) = α + ε * ln(P) + error
 Where ε is the price elasticity coefficient.
 """
+from __future__ import annotations
 
 import numpy as np
 from scipy import stats

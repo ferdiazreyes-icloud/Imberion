@@ -1,28 +1,30 @@
+from typing import List, Optional
+
 from pydantic import BaseModel
+
+
+class PriceChange(BaseModel):
+    product_id: Optional[int] = None
+    category_id: Optional[int] = None
+    segment: Optional[str] = None
+    territory_id: Optional[int] = None
+    change_pct: float
 
 
 class ScenarioCreate(BaseModel):
     name: str
-    description: str | None = None
-    assumptions: dict | None = None
-    price_changes: list["PriceChange"]
-
-
-class PriceChange(BaseModel):
-    product_id: int | None = None
-    category_id: int | None = None
-    segment: str | None = None
-    territory_id: int | None = None
-    change_pct: float
+    description: Optional[str] = None
+    assumptions: Optional[dict] = None
+    price_changes: List[PriceChange]
 
 
 class ScenarioOut(BaseModel):
     id: int
     name: str
-    description: str | None = None
+    description: Optional[str] = None
     is_base: bool
-    created_at: str | None = None
-    assumptions: dict | None = None
+    created_at: Optional[str] = None
+    assumptions: Optional[dict] = None
 
     model_config = {"from_attributes": True}
 
@@ -31,9 +33,9 @@ class ScenarioResultOut(BaseModel):
     id: int
     scenario_id: int
     product_id: int
-    product_name: str | None = None
-    segment: str | None = None
-    territory_name: str | None = None
+    product_name: Optional[str] = None
+    segment: Optional[str] = None
+    territory_name: Optional[str] = None
     price_change_pct: float
     expected_volume: float
     expected_revenue: float
@@ -44,8 +46,8 @@ class ScenarioResultOut(BaseModel):
 
 
 class ScenarioCompareResponse(BaseModel):
-    base: list[ScenarioResultOut]
-    scenario: list[ScenarioResultOut]
+    base: List[ScenarioResultOut]
+    scenario: List[ScenarioResultOut]
     delta_revenue: float
     delta_volume: float
     delta_margin: float

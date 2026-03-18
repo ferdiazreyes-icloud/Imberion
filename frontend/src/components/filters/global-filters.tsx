@@ -1,25 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Select } from "@/components/ui/select";
 import { useFilters } from "@/hooks/useFilters";
 import { getFilterCategories, getFilterTerritories } from "@/lib/api";
 
 export function GlobalFilters() {
   const { filters, setFilter, clearFilters } = useFilters();
-  const [categories, setCategories] = useState<{ value: string; label: string }[]>([]);
-  const [territories, setTerritories] = useState<{ value: string; label: string }[]>([]);
 
-  useEffect(() => {
-    getFilterCategories()
-      .then((cats) => setCategories(cats.map((c: any) => ({ value: String(c.id), label: c.name }))))
-      .catch(() => {});
-    getFilterTerritories()
-      .then((ts) =>
-        setTerritories(ts.map((t: any) => ({ value: String(t.id), label: `${t.state} - ${t.municipality}` })))
-      )
-      .catch(() => {});
-  }, []);
+  const { data: categoriesRaw } = useQuery({
+    queryKey: ["filter-categories"],
+    queryFn: getFilterCategories,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: territoriesRaw } = useQuery({
+    queryKey: ["filter-territories"],
+    queryFn: getFilterTerritories,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const categories = (categoriesRaw || []).map((c) => ({ value: String(c.id), label: c.name }));
+  const territories = (territoriesRaw || []).map((t) => ({ value: String(t.id), label: `${t.state} - ${t.municipality}` }));
 
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-white p-4">

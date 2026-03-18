@@ -1,10 +1,13 @@
+from datetime import date
+from typing import List, Optional, Union
+
 from pydantic import BaseModel
 
 
 class KPI(BaseModel):
     label: str
     value: float
-    change_pct: float | None = None
+    change_pct: Optional[float] = None
     unit: str = ""
 
 
@@ -29,8 +32,8 @@ class ElasticityOut(BaseModel):
     r_squared: float
     node_type: str
     node_id: int
-    period_start: str
-    period_end: str
+    period_start: Union[str, date]
+    period_end: Union[str, date]
     sample_size: int
 
     model_config = {"from_attributes": True}
@@ -49,13 +52,13 @@ class TrendResponse(BaseModel):
     node_type: str
     node_id: int
     node_label: str
-    data: list[TrendPoint]
+    data: List[TrendPoint]
 
 
 class PassthroughEntry(BaseModel):
     segment: str
-    territory: str | None = None
-    product: str | None = None
+    territory: Optional[str] = None
+    product: Optional[str] = None
     avg_list_price: float
     avg_discount: float
     avg_rebate: float
@@ -68,16 +71,16 @@ class PassthroughEntry(BaseModel):
 class RecommendationOut(BaseModel):
     id: int
     product_id: int
-    product_name: str | None = None
-    category_name: str | None = None
+    product_name: Optional[str] = None
+    category_name: Optional[str] = None
     segment: str
-    territory_name: str | None = None
+    territory_name: Optional[str] = None
     action_type: str
     suggested_change_pct: float
     expected_impact_revenue: float
     expected_impact_volume: float
     expected_impact_margin: float
     confidence_level: str
-    rationale: dict | None = None
+    rationale: Optional[dict] = None
 
     model_config = {"from_attributes": True}

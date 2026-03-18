@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -40,6 +39,8 @@ export default function OverviewPage() {
     queryFn: () => getOverviewByTerritory(params),
   });
 
+  const isLoading = !overview && !byCategory;
+
   return (
     <div className="space-y-6">
       <div>
@@ -48,6 +49,12 @@ export default function OverviewPage() {
       </div>
 
       <GlobalFilters />
+
+      {isLoading && (
+        <div className="flex items-center justify-center h-32">
+          <p className="text-gray-400 animate-pulse">Cargando datos...</p>
+        </div>
+      )}
 
       {/* KPI Cards */}
       {overview && (
@@ -95,9 +102,9 @@ export default function OverviewPage() {
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
-                  label={({ name, percent }: any) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                  label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ""} (${((percent ?? 0) * 100).toFixed(0)}%)`}
                 >
-                  {(bySegment || []).map((entry: any) => (
+                  {(bySegment || []).map((entry) => (
                     <Cell key={entry.segment} fill={SEGMENT_COLORS[entry.segment] || "#9ca3af"} />
                   ))}
                 </Pie>

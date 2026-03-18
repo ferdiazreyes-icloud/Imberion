@@ -1,3 +1,5 @@
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, extract
 from sqlalchemy.orm import Session
@@ -9,12 +11,12 @@ from app.schemas.analytics import ElasticityOut, TrendPoint, TrendResponse
 router = APIRouter()
 
 
-@router.get("/history/elasticities", response_model=list[ElasticityOut])
+@router.get("/history/elasticities", response_model=List[ElasticityOut])
 def get_elasticities(
-    node_type: str | None = None,
-    node_id: int | None = None,
-    type: str | None = None,
-    confidence_level: str | None = None,
+    node_type: Optional[str] = None,
+    node_id: Optional[int] = None,
+    type: Optional[str] = None,
+    confidence_level: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(Elasticity)
@@ -32,9 +34,9 @@ def get_elasticities(
 @router.get("/history/trends")
 def get_trends(
     node_type: str = "category",
-    node_id: int | None = None,
-    segment: str | None = None,
-    territory_id: int | None = None,
+    node_id: Optional[int] = None,
+    segment: Optional[str] = None,
+    territory_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -88,9 +90,9 @@ def get_trends(
 
 @router.get("/history/price-volume")
 def get_price_volume_scatter(
-    product_id: int | None = None,
-    category_id: int | None = None,
-    segment: str | None = None,
+    product_id: Optional[int] = None,
+    category_id: Optional[int] = None,
+    segment: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     """Return monthly price-volume pairs for scatter/elasticity chart."""

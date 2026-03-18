@@ -8,14 +8,14 @@ import { GlobalFilters } from "@/components/filters/global-filters";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useFilters } from "@/hooks/useFilters";
-import { getRecommendations, getRecommendationsSummary, getExecutiveSummary } from "@/lib/api";
+import { getRecommendations, getRecommendationsSummary, getExecutiveSummary, getExportCSVUrl } from "@/lib/api";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 export default function RecommendationsPage() {
   const { getActiveParams } = useFilters();
   const params = getActiveParams();
 
-  const { data: recommendations } = useQuery({
+  const { data: recommendations, isLoading } = useQuery({
     queryKey: ["recommendations", params],
     queryFn: () => getRecommendations(params),
   });
@@ -26,8 +26,7 @@ export default function RecommendationsPage() {
   });
 
   const handleExportCSV = () => {
-    const qs = new URLSearchParams(params).toString();
-    window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/export/recommendations-csv?${qs}`, "_blank");
+    window.open(getExportCSVUrl(params), "_blank");
   };
 
   const handleExportSummary = async () => {
@@ -38,14 +37,15 @@ export default function RecommendationsPage() {
     a.href = url;
     a.download = "informe_ejecutivo.json";
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   // Summary chart data
-  const summaryBySegment = (summary || []).reduce((acc: any[], item: any) => {
+  const summaryBySegment = (summary || []).reduce((acc: Array<Record<string, unknown>>, item) => {
     const existing = acc.find((a) => a.segment === item.segment);
     if (existing) {
       existing[item.action_type] = item.count;
-      existing.total_margin += item.total_margin_impact;
+      (existing as Record<string, number>).total_margin += item.total_margin_impact;
     } else {
       acc.push({
         segment: item.segment,
@@ -74,6 +74,12 @@ export default function RecommendationsPage() {
       </div>
 
       <GlobalFilters />
+
+      {isLoading && (
+        <div className="flex items-center justify-center h-32">
+          <p className="text-gray-400 animate-pulse">Cargando datos...</p>
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -107,13 +113,13 @@ export default function RecommendationsPage() {
               <div className="rounded-lg bg-green-50 p-4">
                 <p className="text-xs text-green-600">Alta confianza</p>
                 <p className="text-2xl font-bold text-green-900">
-                  {(recommendations || []).filter((r: any) => r.confidence_level === "high").length}
+                  {(recommendations || []).filter((r) => r.confidence_level === "high").length}
                 </p>
               </div>
               <div className="rounded-lg bg-amber-50 p-4">
                 <p className="text-xs text-amber-600">Oportunidades de aumento</p>
                 <p className="text-2xl font-bold text-amber-900">
-                  {(recommendations || []).filter((r: any) => r.action_type === "increase").length}
+                  {(recommendations || []).filter((r) => r.action_type === "increase").length}
                 </p>
               </div>
             </div>
@@ -143,7 +149,7 @@ export default function RecommendationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(recommendations || []).map((r: any) => (
+                {(recommendations || []).map((r) => (
                   <tr key={r.id} className="border-b hover:bg-gray-50">
                     <td className="py-2 pr-3 max-w-[200px] truncate font-medium">{r.product_name}</td>
                     <td className="py-2 pr-3 text-gray-500">{r.category_name}</td>

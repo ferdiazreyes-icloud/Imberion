@@ -19,7 +19,7 @@ export default function HistoryPage() {
   const params = getActiveParams();
   const [nodeType, setNodeType] = useState("category");
 
-  const { data: elasticities } = useQuery({
+  const { data: elasticities, isLoading } = useQuery({
     queryKey: ["elasticities", params],
     queryFn: () => getElasticities({ ...params, type: "historical" }),
   });
@@ -42,6 +42,12 @@ export default function HistoryPage() {
       </div>
 
       <GlobalFilters />
+
+      {isLoading && (
+        <div className="flex items-center justify-center h-32">
+          <p className="text-gray-400 animate-pulse">Cargando datos...</p>
+        </div>
+      )}
 
       <div className="flex gap-3">
         <Select
@@ -115,7 +121,7 @@ export default function HistoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(elasticities || []).slice(0, 30).map((e: any) => (
+                  {(elasticities || []).slice(0, 30).map((e) => (
                     <tr key={e.id} className="border-b">
                       <td className="py-2 font-medium">{e.node_type} #{e.node_id}</td>
                       <td className="py-2 font-mono">{e.coefficient.toFixed(3)}</td>

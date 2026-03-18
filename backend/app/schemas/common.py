@@ -1,14 +1,16 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
 class FilterParams(BaseModel):
-    segment: str | None = None
-    territory_id: int | None = None
-    region: str | None = None
-    state: str | None = None
-    category_id: int | None = None
-    product_id: int | None = None
-    customer_id: int | None = None
-    period_start: str | None = None
-    period_end: str | None = None
-    confidence_level: str | None = None
+    segment: Optional[str] = None
+    territory_id: Optional[int] = None
+    region: Optional[str] = None
+    state: Optional[str] = None
+    category_id: Optional[int] = None
+    product_id: Optional[int] = None
+    customer_id: Optional[int] = None
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
+    confidence_level: Optional[str] = None

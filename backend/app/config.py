@@ -1,11 +1,14 @@
+from typing import List
+
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql://imberion:dev_password@localhost:5432/imberion"
-    cors_origins: list[str] = ["http://localhost:3000"]
+    database_url: str = "postgresql://localhost:5432/imberion"
+    cors_origins: List[str] = ["http://localhost:3000"]
     app_name: str = "USG Pricing Decision Engine"
-    debug: bool = True
+    debug: bool = False
+    port: int = 8000
 
     model_config = {"env_file": ".env"}
 

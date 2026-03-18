@@ -4,6 +4,7 @@ Prediction model for pricing scenarios.
 Uses elasticity coefficients to predict volume, revenue, and margin
 under different pricing assumptions.
 """
+from __future__ import annotations
 
 import numpy as np
 

@@ -24,7 +24,7 @@ export default function SimulatorPage() {
   const [selectedScenario, setSelectedScenario] = useState<number | null>(null);
 
   // Quick simulate curve
-  const { data: simulation } = useQuery({
+  const { data: simulation, isLoading } = useQuery({
     queryKey: ["quick-simulate", params, priceChange],
     queryFn: () => quickSimulate({ ...params, price_change_pct: String(priceChange) }),
   });
@@ -64,7 +64,7 @@ export default function SimulatorPage() {
   };
 
   const curve = simulation?.curve || [];
-  const currentPoint = curve.find((p: any) => p.price_change_pct === 0);
+  const currentPoint = curve.find((p) => p.price_change_pct === 0);
 
   return (
     <div className="space-y-6">
@@ -74,6 +74,12 @@ export default function SimulatorPage() {
       </div>
 
       <GlobalFilters />
+
+      {isLoading && (
+        <div className="flex items-center justify-center h-32">
+          <p className="text-gray-400 animate-pulse">Cargando datos...</p>
+        </div>
+      )}
 
       {/* Simulation Controls */}
       <Card>
@@ -162,7 +168,7 @@ export default function SimulatorPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-[300px] overflow-auto">
-              {(scenarios || []).map((s: any) => (
+              {(scenarios || []).map((s) => (
                 <button
                   key={s.id}
                   onClick={() => setSelectedScenario(s.id)}
@@ -199,7 +205,7 @@ export default function SimulatorPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(scenarioResults || []).slice(0, 20).map((r: any) => (
+                  {(scenarioResults || []).slice(0, 20).map((r) => (
                     <tr key={r.id} className="border-b">
                       <td className="py-2 max-w-[150px] truncate">{r.product_name}</td>
                       <td className={`py-2 font-mono ${r.price_change_pct >= 0 ? "text-blue-600" : "text-red-600"}`}>

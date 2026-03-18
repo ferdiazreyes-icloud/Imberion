@@ -9,6 +9,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U imberion"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./backend
@@ -16,8 +21,12 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://imberion:dev_password@db:5432/imberion
+      CORS_ORIGINS: '["http://localhost:3000"]'
+      DEBUG: "true"
+      PORT: "8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - ./backend:/app
 
@@ -29,8 +38,6 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:8000
     depends_on:
       - backend
-    volumes:
-      - ./frontend/src:/app/src
 
 volumes:
   pgdata:

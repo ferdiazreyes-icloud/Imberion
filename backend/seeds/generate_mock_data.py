@@ -430,6 +430,18 @@ def seed_recommendations(db, products, territories):
     print(f"  {len(recs)} recommendations created.")
 
 
+def seed_all(db):
+    """Seed all mock data using an existing database session."""
+    territories = seed_territories(db)
+    customers = seed_customers(db, territories)
+    categories, products = seed_categories_and_products(db)
+    seed_transactions(db, customers, products, territories, categories)
+    seed_elasticities(db, products, categories, territories)
+    seed_recommendations(db, products, territories)
+    db.commit()
+    print("\nDone! All mock data generated successfully.")
+
+
 def main():
     print("Creating tables...")
     create_tables()
@@ -437,14 +449,7 @@ def main():
     print("Seeding data...")
     db = SessionLocal()
     try:
-        territories = seed_territories(db)
-        customers = seed_customers(db, territories)
-        categories, products = seed_categories_and_products(db)
-        seed_transactions(db, customers, products, territories, categories)
-        seed_elasticities(db, products, categories, territories)
-        seed_recommendations(db, products, territories)
-        db.commit()
-        print("\nDone! All mock data generated successfully.")
+        seed_all(db)
     except Exception as e:
         db.rollback()
         print(f"Error: {e}")

@@ -1,10 +1,25 @@
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from typing import Optional
+
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.database import Base, engine, get_db
 from app.api import overview, history, simulator, recommendations, passthrough, export
+from app.models import Territory, Category, Customer
 
-app = FastAPI(title=settings.app_name, version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create tables on startup (safe — does nothing if they exist)
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
+app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,7 +38,8 @@ app.include_router(export.router, prefix="/api", tags=["Export"])
 
 
 @app.get("/api/health")
-def health():
+def health(db: Session = Depends(get_db)):
+    db.execute(text("SELECT 1"))
     return {"status": "ok"}
 
 
@@ -33,51 +49,39 @@ def get_segments():
 
 
 @app.get("/api/filters/regions")
-def get_regions(db=None):
-    from app.database import SessionLocal
-    db = SessionLocal()
-    try:
-        from app.models import Territory
-        regions = db.query(Territory.region).distinct().all()
-        return [r[0] for r in regions]
-    finally:
-        db.close()
+def get_regions(db: Session = Depends(get_db)):
+    regions = db.query(Territory.region).distinct().all()
+    return [r[0] for r in regions]
 
 
 @app.get("/api/filters/categories")
-def get_categories():
-    from app.database import SessionLocal
-    db = SessionLocal()
-    try:
-        from app.models import Category
-        cats = db.query(Category).all()
-        return [{"id": c.id, "name": c.name} for c in cats]
-    finally:
-        db.close()
+def get_categories(db: Session = Depends(get_db)):
+    cats = db.query(Category).all()
+    return [{"id": c.id, "name": c.name} for c in cats]
 
 
 @app.get("/api/filters/territories")
-def get_territories():
-    from app.database import SessionLocal
-    db = SessionLocal()
-    try:
-        from app.models import Territory
-        territories = db.query(Territory).all()
-        return [{"id": t.id, "region": t.region, "state": t.state, "municipality": t.municipality} for t in territories]
-    finally:
-        db.close()
+def get_territories(db: Session = Depends(get_db)):
+    territories = db.query(Territory).all()
+    return [{"id": t.id, "region": t.region, "state": t.state, "municipality": t.municipality} for t in territories]
 
 
 @app.get("/api/filters/customers")
-def get_customers(segment: str | None = None):
-    from app.database import SessionLocal
-    db = SessionLocal()
-    try:
-        from app.models import Customer
-        q = db.query(Customer)
-        if segment:
-            q = q.filter(Customer.segment == segment)
-        customers = q.all()
-        return [{"id": c.id, "name": c.name, "segment": c.segment} for c in customers]
-    finally:
-        db.close()
+def get_customers(segment: Optional[str] = None, db: Session = Depends(get_db)):
+    q = db.query(Customer)
+    if segment:
+        q = q.filter(Customer.segment == segment)
+    customers = q.all()
+    return [{"id": c.id, "name": c.name, "segment": c.segment} for c in customers]
+
+
+@app.post("/api/admin/seed", tags=["Admin"])
+def seed_database(db: Session = Depends(get_db)):
+    """Populate database with mock data. Safe to call multiple times — skips if data exists."""
+    existing = db.query(Territory).first()
+    if existing:
+        return {"status": "skipped", "message": "Database already has data"}
+
+    from seeds.generate_mock_data import seed_all
+    seed_all(db)
+    return {"status": "ok", "message": "Mock data generated successfully"}

@@ -1,3 +1,6 @@
+from typing import Optional
+
+import csv
 import io
 from datetime import datetime
 
@@ -14,33 +17,35 @@ router = APIRouter()
 
 @router.get("/export/recommendations-csv")
 def export_recommendations_csv(
-    segment: str | None = None,
-    confidence_level: str | None = None,
+    segment: Optional[str] = None,
+    confidence_level: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    q = db.query(Recommendation)
+    q = (
+        db.query(Recommendation, Product, Category, Territory)
+        .join(Product, Recommendation.product_id == Product.id)
+        .join(Category, Product.category_id == Category.id)
+        .outerjoin(Territory, Recommendation.territory_id == Territory.id)
+    )
     if segment:
         q = q.filter(Recommendation.segment == segment)
     if confidence_level:
         q = q.filter(Recommendation.confidence_level == confidence_level)
 
-    recs = q.all()
+    rows = q.all()
 
     output = io.StringIO()
-    output.write("Product,Category,Segment,Territory,Action,Change%,Revenue Impact,Volume Impact,Margin Impact,Confidence\n")
+    writer = csv.writer(output)
+    writer.writerow(["Product", "Category", "Segment", "Territory", "Action", "Change%",
+                      "Revenue Impact", "Volume Impact", "Margin Impact", "Confidence"])
 
-    for r in recs:
-        product = db.query(Product).get(r.product_id)
-        category = db.query(Category).get(product.category_id) if product else None
-        territory = db.query(Territory).get(r.territory_id) if r.territory_id else None
-
-        output.write(
-            f'"{product.name if product else ""}","{category.name if category else ""}",'
-            f'"{r.segment}","{territory.state if territory else ""}",'
-            f'"{r.action_type}",{r.suggested_change_pct},'
-            f'{r.expected_impact_revenue},{r.expected_impact_volume},'
-            f'{r.expected_impact_margin},"{r.confidence_level}"\n'
-        )
+    for r, p, c, t in rows:
+        writer.writerow([
+            p.name, c.name, r.segment, t.state if t else "",
+            r.action_type, r.suggested_change_pct,
+            r.expected_impact_revenue, r.expected_impact_volume,
+            r.expected_impact_margin, r.confidence_level,
+        ])
 
     output.seek(0)
     return StreamingResponse(
@@ -52,15 +57,13 @@ def export_recommendations_csv(
 
 @router.get("/export/executive-summary")
 def export_executive_summary(db: Session = Depends(get_db)):
-    """Generate executive summary JSON (can be rendered as PDF on frontend)."""
-    # Total KPIs
+    """Generate executive summary JSON."""
     totals = db.query(
         func.sum(Transaction.revenue).label("revenue"),
         func.sum(Transaction.volume).label("volume"),
         func.avg(Transaction.net_price).label("avg_price"),
     ).one()
 
-    # By segment
     by_segment = db.query(
         Customer.segment,
         func.sum(Transaction.revenue).label("revenue"),
@@ -68,22 +71,14 @@ def export_executive_summary(db: Session = Depends(get_db)):
         func.count(func.distinct(Customer.id)).label("n_customers"),
     ).join(Customer).group_by(Customer.segment).all()
 
-    # Top recommendations
-    top_recs = db.query(Recommendation).filter(
-        Recommendation.confidence_level.in_(["high", "medium"])
-    ).order_by(Recommendation.expected_impact_margin.desc()).limit(20).all()
-
-    rec_data = []
-    for r in top_recs:
-        product = db.query(Product).get(r.product_id)
-        rec_data.append({
-            "product": product.name if product else "N/A",
-            "segment": r.segment,
-            "action": r.action_type,
-            "change_pct": r.suggested_change_pct,
-            "margin_impact": r.expected_impact_margin,
-            "confidence": r.confidence_level,
-        })
+    top_recs = (
+        db.query(Recommendation, Product)
+        .join(Product, Recommendation.product_id == Product.id)
+        .filter(Recommendation.confidence_level.in_(["high", "medium"]))
+        .order_by(Recommendation.expected_impact_margin.desc())
+        .limit(20)
+        .all()
+    )
 
     return {
         "generated_at": datetime.now().isoformat(),
@@ -102,5 +97,15 @@ def export_executive_summary(db: Session = Depends(get_db)):
             }
             for r in by_segment
         ],
-        "top_recommendations": rec_data,
+        "top_recommendations": [
+            {
+                "product": p.name,
+                "segment": r.segment,
+                "action": r.action_type,
+                "change_pct": r.suggested_change_pct,
+                "margin_impact": r.expected_impact_margin,
+                "confidence": r.confidence_level,
+            }
+            for r, p in top_recs
+        ],
     }

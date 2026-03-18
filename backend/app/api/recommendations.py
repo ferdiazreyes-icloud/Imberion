@@ -1,5 +1,7 @@
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models import Recommendation, Product, Territory, Category
@@ -8,26 +10,31 @@ from app.schemas.analytics import RecommendationOut
 router = APIRouter()
 
 
-@router.get("/recommendations", response_model=list[RecommendationOut])
+@router.get("/recommendations", response_model=List[RecommendationOut])
 def get_recommendations(
-    segment: str | None = None,
-    territory_id: int | None = None,
-    category_id: int | None = None,
-    product_id: int | None = None,
-    confidence_level: str | None = None,
-    action_type: str | None = None,
+    segment: Optional[str] = None,
+    territory_id: Optional[int] = None,
+    category_id: Optional[int] = None,
+    product_id: Optional[int] = None,
+    confidence_level: Optional[str] = None,
+    action_type: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
 ):
-    q = db.query(Recommendation)
+    q = (
+        db.query(Recommendation, Product, Category, Territory)
+        .join(Product, Recommendation.product_id == Product.id)
+        .join(Category, Product.category_id == Category.id)
+        .outerjoin(Territory, Recommendation.territory_id == Territory.id)
+    )
 
     if segment:
         q = q.filter(Recommendation.segment == segment)
     if territory_id:
         q = q.filter(Recommendation.territory_id == territory_id)
     if category_id:
-        q = q.join(Product).filter(Product.category_id == category_id)
+        q = q.filter(Product.category_id == category_id)
     if product_id:
         q = q.filter(Recommendation.product_id == product_id)
     if confidence_level:
@@ -35,21 +42,16 @@ def get_recommendations(
     if action_type:
         q = q.filter(Recommendation.action_type == action_type)
 
-    recs = q.offset(offset).limit(limit).all()
+    rows = q.offset(offset).limit(limit).all()
 
-    results = []
-    for r in recs:
-        product = db.query(Product).get(r.product_id)
-        category = db.query(Category).get(product.category_id) if product else None
-        territory = db.query(Territory).get(r.territory_id) if r.territory_id else None
-
-        results.append(RecommendationOut(
+    return [
+        RecommendationOut(
             id=r.id,
             product_id=r.product_id,
-            product_name=product.name if product else None,
-            category_name=category.name if category else None,
+            product_name=p.name,
+            category_name=c.name,
             segment=r.segment,
-            territory_name=territory.state if territory else None,
+            territory_name=t.state if t else None,
             action_type=r.action_type,
             suggested_change_pct=r.suggested_change_pct,
             expected_impact_revenue=r.expected_impact_revenue,
@@ -57,9 +59,9 @@ def get_recommendations(
             expected_impact_margin=r.expected_impact_margin,
             confidence_level=r.confidence_level,
             rationale=r.rationale,
-        ))
-
-    return results
+        )
+        for r, p, c, t in rows
+    ]
 
 
 @router.get("/recommendations/summary")

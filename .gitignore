@@ -1,9 +1,13 @@
 node_modules/
 .next/
 .env
+.env.local
+.env.production
 __pycache__/
 *.pyc
 .venv/
 *.egg-info/
 dist/
 build/
+*.db
+.DS_Store

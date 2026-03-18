@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, distinct
 from sqlalchemy.orm import Session
@@ -11,12 +13,12 @@ router = APIRouter()
 
 @router.get("/overview", response_model=OverviewResponse)
 def get_overview(
-    segment: str | None = None,
-    territory_id: int | None = None,
-    region: str | None = None,
-    category_id: int | None = None,
-    period_start: str | None = None,
-    period_end: str | None = None,
+    segment: Optional[str] = None,
+    territory_id: Optional[int] = None,
+    region: Optional[str] = None,
+    category_id: Optional[int] = None,
+    period_start: Optional[str] = None,
+    period_end: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -70,8 +72,8 @@ def get_overview(
 
 @router.get("/overview/by-category")
 def overview_by_category(
-    segment: str | None = None,
-    territory_id: int | None = None,
+    segment: Optional[str] = None,
+    territory_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     from app.models import Category
@@ -107,8 +109,8 @@ def overview_by_category(
 
 @router.get("/overview/by-segment")
 def overview_by_segment(
-    category_id: int | None = None,
-    territory_id: int | None = None,
+    category_id: Optional[int] = None,
+    territory_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -142,8 +144,8 @@ def overview_by_segment(
 
 @router.get("/overview/by-territory")
 def overview_by_territory(
-    segment: str | None = None,
-    category_id: int | None = None,
+    segment: Optional[str] = None,
+    category_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(

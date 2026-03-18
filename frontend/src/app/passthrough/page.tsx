@@ -16,7 +16,7 @@ export default function PassthroughPage() {
   const { getActiveParams } = useFilters();
   const params = getActiveParams();
 
-  const { data: bySegment } = useQuery({
+  const { data: bySegment, isLoading } = useQuery({
     queryKey: ["passthrough-segment", params],
     queryFn: () => getPassthroughBySegment(params),
   });
@@ -39,6 +39,12 @@ export default function PassthroughPage() {
       </div>
 
       <GlobalFilters />
+
+      {isLoading && (
+        <div className="flex items-center justify-center h-32">
+          <p className="text-gray-400 animate-pulse">Cargando datos...</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Price Waterfall by Segment */}
@@ -69,7 +75,7 @@ export default function PassthroughPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {(bySegment || []).map((s: any) => (
+              {(bySegment || []).map((s) => (
                 <div key={s.segment} className="flex items-center gap-3">
                   <Badge variant={s.segment} className="w-16 justify-center">{s.segment}</Badge>
                   <div className="flex-1">

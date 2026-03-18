@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -7,12 +9,12 @@ from app.models import (
     Transaction, Customer, Product, Territory, Category,
     Elasticity, Scenario, ScenarioResult,
 )
-from app.schemas.scenario import ScenarioCreate, ScenarioOut, ScenarioResultOut, ScenarioCompareResponse
+from app.schemas.scenario import ScenarioCreate, ScenarioOut, ScenarioResultOut
 
 router = APIRouter()
 
 
-@router.get("/simulator/scenarios", response_model=list[ScenarioOut])
+@router.get("/simulator/scenarios", response_model=List[ScenarioOut])
 def list_scenarios(db: Session = Depends(get_db)):
     return db.query(Scenario).order_by(Scenario.created_at.desc()).all()
 
@@ -28,7 +30,6 @@ def create_scenario(data: ScenarioCreate, db: Session = Depends(get_db)):
     db.flush()
 
     for pc in data.price_changes:
-        # Determine affected products
         product_ids = []
         if pc.product_id:
             product_ids = [pc.product_id]
@@ -37,48 +38,56 @@ def create_scenario(data: ScenarioCreate, db: Session = Depends(get_db)):
         else:
             product_ids = [p.id for p in db.query(Product.id).all()]
 
-        for pid in product_ids:
-            # Get elasticity for this product
-            elast = db.query(Elasticity).filter(
+        # Batch fetch elasticities for all products
+        elasticities = {
+            e.node_id: e
+            for e in db.query(Elasticity).filter(
                 Elasticity.node_type == "sku",
-                Elasticity.node_id == pid,
-                Elasticity.type == "predicted",
-            ).first()
+                Elasticity.node_id.in_(product_ids),
+            ).all()
+        }
 
-            if not elast:
-                elast = db.query(Elasticity).filter(
-                    Elasticity.node_type == "sku",
-                    Elasticity.node_id == pid,
-                    Elasticity.type == "historical",
-                ).first()
+        # Batch fetch base data for all products
+        base_q = (
+            db.query(
+                Transaction.product_id,
+                func.avg(Transaction.net_price).label("price"),
+                func.sum(Transaction.volume).label("volume"),
+                func.sum(Transaction.revenue).label("revenue"),
+            )
+            .filter(Transaction.product_id.in_(product_ids))
+            .group_by(Transaction.product_id)
+        )
+        if pc.segment:
+            base_q = base_q.join(Customer).filter(Customer.segment == pc.segment)
+        if pc.territory_id:
+            base_q = base_q.filter(Transaction.territory_id == pc.territory_id)
+
+        base_data = {row.product_id: row for row in base_q.all()}
+
+        for pid in product_ids:
+            # Get best elasticity: prefer predicted, fallback to historical
+            elast = elasticities.get(pid)
+            if elast and elast.type != "predicted":
+                predicted = next(
+                    (e for e in elasticities.values() if e.node_id == pid and e.type == "predicted"), None
+                )
+                if predicted:
+                    elast = predicted
 
             coefficient = elast.coefficient if elast else -1.0
             confidence = elast.confidence_level if elast else "low"
 
-            # Get current averages for this product
-            base = db.query(
-                func.avg(Transaction.net_price).label("price"),
-                func.sum(Transaction.volume).label("volume"),
-                func.sum(Transaction.revenue).label("revenue"),
-            ).filter(Transaction.product_id == pid)
+            base = base_data.get(pid)
+            base_price = float(base.price) if base and base.price else 100.0
+            base_volume = float(base.volume) if base and base.volume else 0.0
 
-            if pc.segment:
-                base = base.join(Customer).filter(Customer.segment == pc.segment)
-            if pc.territory_id:
-                base = base.filter(Transaction.territory_id == pc.territory_id)
-
-            base_row = base.one()
-            base_price = float(base_row.price or 100)
-            base_volume = float(base_row.volume or 0)
-            base_revenue = float(base_row.revenue or 0)
-
-            # Apply elasticity: %ΔQ = ε × %ΔP
             pct_change = pc.change_pct / 100
             volume_change = coefficient * pct_change
             expected_volume = base_volume * (1 + volume_change)
             new_price = base_price * (1 + pct_change)
             expected_revenue = expected_volume * new_price
-            expected_margin = expected_revenue * 0.30  # 30% margin assumption
+            expected_margin = expected_revenue * 0.30
 
             result = ScenarioResult(
                 scenario_id=scenario.id,
@@ -98,59 +107,66 @@ def create_scenario(data: ScenarioCreate, db: Session = Depends(get_db)):
     return scenario
 
 
-@router.get("/simulator/scenarios/{scenario_id}/results", response_model=list[ScenarioResultOut])
+@router.get("/simulator/scenarios/{scenario_id}/results", response_model=List[ScenarioResultOut])
 def get_scenario_results(scenario_id: int, db: Session = Depends(get_db)):
-    results = db.query(ScenarioResult).filter(ScenarioResult.scenario_id == scenario_id).all()
-    enriched = []
-    for r in results:
-        product = db.query(Product).get(r.product_id)
-        territory = db.query(Territory).get(r.territory_id) if r.territory_id else None
-        enriched.append(ScenarioResultOut(
+    rows = (
+        db.query(ScenarioResult, Product, Territory)
+        .join(Product, ScenarioResult.product_id == Product.id)
+        .outerjoin(Territory, ScenarioResult.territory_id == Territory.id)
+        .filter(ScenarioResult.scenario_id == scenario_id)
+        .all()
+    )
+    return [
+        ScenarioResultOut(
             id=r.id,
             scenario_id=r.scenario_id,
             product_id=r.product_id,
-            product_name=product.name if product else None,
+            product_name=p.name,
             segment=r.segment,
-            territory_name=territory.state if territory else None,
+            territory_name=t.state if t else None,
             price_change_pct=r.price_change_pct,
             expected_volume=r.expected_volume,
             expected_revenue=r.expected_revenue,
             expected_margin=r.expected_margin,
             confidence_level=r.confidence_level,
-        ))
-    return enriched
+        )
+        for r, p, t in rows
+    ]
 
 
 @router.get("/simulator/compare")
 def compare_scenarios(scenario_id: int, db: Session = Depends(get_db)):
-    """Compare a scenario against the base scenario (latest base or first scenario)."""
-    base_scenario = db.query(Scenario).filter(Scenario.is_base == True).first()
-    scenario = db.query(Scenario).get(scenario_id)
-
+    """Compare a scenario against actual transaction data."""
+    scenario = db.get(Scenario, scenario_id)
     if not scenario:
-        return {"error": "Scenario not found"}
+        raise HTTPException(status_code=404, detail="Scenario not found")
 
     scenario_results = db.query(ScenarioResult).filter(ScenarioResult.scenario_id == scenario_id).all()
 
-    # Calculate base values from actual transactions
+    # Batch fetch base data
+    product_ids = [r.product_id for r in scenario_results]
+    base_totals = {}
+    if product_ids:
+        base_rows = (
+            db.query(
+                Transaction.product_id,
+                func.sum(Transaction.volume).label("volume"),
+                func.sum(Transaction.revenue).label("revenue"),
+            )
+            .filter(Transaction.product_id.in_(product_ids))
+            .group_by(Transaction.product_id)
+            .all()
+        )
+        base_totals = {row.product_id: row for row in base_rows}
+
     base_data = []
     for r in scenario_results:
-        base_q = db.query(
-            func.sum(Transaction.volume).label("volume"),
-            func.sum(Transaction.revenue).label("revenue"),
-        ).filter(Transaction.product_id == r.product_id)
-
-        if r.segment:
-            base_q = base_q.join(Customer).filter(Customer.segment == r.segment)
-        if r.territory_id:
-            base_q = base_q.filter(Transaction.territory_id == r.territory_id)
-
-        base_row = base_q.one()
+        bt = base_totals.get(r.product_id)
         base_data.append({
             "product_id": r.product_id,
             "segment": r.segment,
-            "base_volume": float(base_row.volume or 0),
-            "base_revenue": float(base_row.revenue or 0),
+            "base_volume": float(bt.volume) if bt and bt.volume else 0.0,
+            "base_revenue": float(bt.revenue) if bt and bt.revenue else 0.0,
             "scenario_volume": r.expected_volume,
             "scenario_revenue": r.expected_revenue,
             "scenario_margin": r.expected_margin,
@@ -175,44 +191,45 @@ def compare_scenarios(scenario_id: int, db: Session = Depends(get_db)):
 
 @router.post("/simulator/quick-simulate")
 def quick_simulate(
-    product_id: int | None = None,
-    category_id: int | None = None,
-    segment: str | None = None,
+    product_id: Optional[int] = None,
+    category_id: Optional[int] = None,
+    segment: Optional[str] = None,
     price_change_pct: float = 5.0,
     db: Session = Depends(get_db),
 ):
-    """Quick simulation without persisting a scenario. Returns price-volume-margin curve."""
+    """Quick simulation without persisting. Returns price-volume-margin curve."""
+    # Fetch elasticity and base data ONCE outside the loop
+    if product_id:
+        elast = db.query(Elasticity).filter(
+            Elasticity.node_type == "sku", Elasticity.node_id == product_id
+        ).first()
+        base_q = db.query(
+            func.avg(Transaction.net_price), func.sum(Transaction.volume), func.sum(Transaction.revenue)
+        ).filter(Transaction.product_id == product_id)
+    elif category_id:
+        elast = db.query(Elasticity).filter(
+            Elasticity.node_type == "category", Elasticity.node_id == category_id
+        ).first()
+        base_q = db.query(
+            func.avg(Transaction.net_price), func.sum(Transaction.volume), func.sum(Transaction.revenue)
+        ).join(Product).filter(Product.category_id == category_id)
+    else:
+        elast = db.query(Elasticity).filter(Elasticity.node_type == "category").first()
+        base_q = db.query(
+            func.avg(Transaction.net_price), func.sum(Transaction.volume), func.sum(Transaction.revenue)
+        )
+
+    if segment:
+        base_q = base_q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
+
+    row = base_q.one()
+    base_price = float(row[0] or 100)
+    base_volume = float(row[1] or 0)
+    coefficient = elast.coefficient if elast else -1.0
+
+    # Generate curve with the cached data
     points = []
     for pct in range(-20, 21, 2):
-        # Get relevant elasticity
-        if product_id:
-            elast = db.query(Elasticity).filter(
-                Elasticity.node_type == "sku", Elasticity.node_id == product_id
-            ).first()
-            base_q = db.query(
-                func.avg(Transaction.net_price), func.sum(Transaction.volume), func.sum(Transaction.revenue)
-            ).filter(Transaction.product_id == product_id)
-        elif category_id:
-            elast = db.query(Elasticity).filter(
-                Elasticity.node_type == "category", Elasticity.node_id == category_id
-            ).first()
-            base_q = db.query(
-                func.avg(Transaction.net_price), func.sum(Transaction.volume), func.sum(Transaction.revenue)
-            ).join(Product).filter(Product.category_id == category_id)
-        else:
-            elast = db.query(Elasticity).filter(Elasticity.node_type == "category").first()
-            base_q = db.query(
-                func.avg(Transaction.net_price), func.sum(Transaction.volume), func.sum(Transaction.revenue)
-            )
-
-        if segment:
-            base_q = base_q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
-
-        row = base_q.one()
-        base_price = float(row[0] or 100)
-        base_volume = float(row[1] or 0)
-        coefficient = elast.coefficient if elast else -1.0
-
         change = pct / 100
         vol_change = coefficient * change
         new_vol = base_volume * (1 + vol_change)
@@ -229,7 +246,7 @@ def quick_simulate(
         })
 
     return {
-        "elasticity_used": elast.coefficient if elast else -1.0,
+        "elasticity_used": coefficient,
         "confidence": elast.confidence_level if elast else "low",
         "curve": points,
     }

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -16,7 +18,7 @@ class CustomerOut(BaseModel):
     type: str
     segment: str
     territory_id: int
-    territory: TerritoryOut | None = None
+    territory: Optional[TerritoryOut] = None
 
     model_config = {"from_attributes": True}
 
