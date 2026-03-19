@@ -1,4 +1,5 @@
-from typing import List, Optional
+from datetime import datetime
+from typing import Any, List, Optional
 
 from pydantic import BaseModel
 
@@ -23,7 +24,7 @@ class ScenarioOut(BaseModel):
     name: str
     description: Optional[str] = None
     is_base: bool
-    created_at: Optional[str] = None
+    created_at: Optional[Any] = None
     assumptions: Optional[dict] = None
 
     model_config = {"from_attributes": True}
@@ -51,3 +52,78 @@ class ScenarioCompareResponse(BaseModel):
     delta_revenue: float
     delta_volume: float
     delta_margin: float
+
+
+# ---------------------------------------------------------------------------
+# New schemas for enhanced simulator
+# ---------------------------------------------------------------------------
+
+class BreakdownItem(BaseModel):
+    name: str
+    id: Optional[int] = None
+    total_volume: float
+    total_revenue: float
+    total_margin: float
+    product_count: int
+    avg_confidence: Optional[str] = None
+
+
+class ScenarioSummaryResponse(BaseModel):
+    scenario_name: str
+    total_volume: float
+    total_revenue: float
+    total_margin: float
+    base_volume: float
+    base_revenue: float
+    base_margin: float
+    delta_volume: float
+    delta_volume_pct: float
+    delta_revenue: float
+    delta_revenue_pct: float
+    delta_margin: float
+    delta_margin_pct: float
+    by_category: List[BreakdownItem]
+    by_segment: List[BreakdownItem]
+
+
+class GroupedResultOut(BaseModel):
+    group_key: str
+    group_name: str
+    total_volume: float
+    total_revenue: float
+    total_margin: float
+    product_count: int
+    avg_price_change_pct: float
+    avg_confidence: str
+    items: Optional[List[ScenarioResultOut]] = None
+
+
+class ScenarioCompareItem(BaseModel):
+    scenario_id: int
+    scenario_name: str
+    total_volume: float
+    total_revenue: float
+    total_margin: float
+    delta_volume: float
+    delta_revenue: float
+    delta_margin: float
+    delta_volume_pct: float
+    delta_revenue_pct: float
+    delta_margin_pct: float
+
+
+class ScenarioRankings(BaseModel):
+    best_for_volume: int
+    best_for_revenue: int
+    best_for_margin: int
+
+
+class MultiCompareResponse(BaseModel):
+    scenarios: List[ScenarioCompareItem]
+    rankings: ScenarioRankings
+
+
+class BestScenarioResponse(BaseModel):
+    objective: str
+    best: ScenarioCompareItem
+    runners_up: List[ScenarioCompareItem]

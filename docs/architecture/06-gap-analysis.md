@@ -2,14 +2,14 @@
 
 ## USG Pricing Decision Engine (MVP)
 
-**Date:** 2026-03-18
+**Date:** 2026-03-19 (updated)
 **Baseline:** Architecture docs (Phases 00–05) vs current deployed state
 
 ---
 
 ## 1. Summary
 
-The MVP is approximately 80% aligned with the original architecture documents. All 5 core modules are functional and deployed. The gaps are concentrated in three areas: the analytics engine integration, export formats, and authentication.
+The MVP is approximately 90% aligned with the original architecture documents. All 5 core modules are functional and deployed. The analytics engine is now fully integrated. Remaining gaps: export formats, authentication, and CI/CD.
 
 ---
 
@@ -19,40 +19,26 @@ The MVP is approximately 80% aligned with the original architecture documents. A
 |----|------|--------|-------|
 | WP-01 | Project setup (monorepo, Docker, CI) | Done | Docker + docker-compose working. No CI/CD pipeline (GitHub Actions) yet |
 | WP-02 | Data model + migrations + mock seeds | Done | 86 SKUs, 25 distributors, 10 territories, 24 months. Auto-create tables instead of Alembic |
-| WP-03 | Base API (CRUD + filters) | Done | 19 endpoints with global filters |
-| WP-04 | Elasticity engine (historical + predictive) | **Partial** | Code exists in `app/analytics/` but is NOT wired to API endpoints |
+| WP-03 | Base API (CRUD + filters) | Done | 23 endpoints with global filters |
+| WP-04 | Elasticity engine (historical + predictive) | **Done** | `predict_scenario()` and `score_confidence()` integrated with simulator endpoints |
 | WP-05 | Layout + Navigation + Global filters | Done | Sidebar + 5 modules + filter params |
 | WP-06 | Overview module (Dashboard KPIs) | Done | 6 KPIs + drill-down by category, segment, territory |
 | WP-07 | History module (Historical elasticities) | Done | Elasticities + trends + scatter plot |
-| WP-08 | Simulator module (Scenarios) | Done | Scenario creation + price-volume-margin curves + save/compare |
+| WP-08 | Simulator module (Scenarios) | Done | Scenario creation + curves + save/compare + drill-down + multi-compare + best scenario |
 | WP-09 | Recommendations module | Done | By segment/territory/SKU + CSV export |
 | WP-10 | Passthrough module (Rebates) | Done | By segment + by category + price component trends |
-| WP-11 | Confidence module | **Partial** | Confidence badges displayed, but `confidence_scorer.py` not integrated |
+| WP-11 | Confidence module | **Done** | `score_confidence()` integrated — confidence levels computed dynamically |
 | WP-12 | Export (PDF/Excel) | **Partial** | CSV and executive summary JSON available. PDF and Excel not implemented |
 | WP-13 | Production deploy | Done | Railway (frontend + backend + PostgreSQL). Design originally specified Vercel for frontend |
-| WP-14 | Testing + QA | Done | 12 pytest unit tests + 28 Playwright E2E tests passing |
+| WP-14 | Testing + QA | Done | 21 pytest unit tests + 28+ Playwright E2E tests passing |
 
 ---
 
 ## 3. Detailed Gap Descriptions
 
-### GAP-01: Analytics Engine Not Integrated
+### ~~GAP-01: Analytics Engine Not Integrated~~ — CLOSED (2026-03-19)
 
-**Design reference:** Phase C (Information Systems Architecture), Section 2.1 — `app/analytics/` directory with `elasticity_model.py`, `prediction_model.py`, `confidence_scorer.py`
-
-**What exists:**
-- Files `elasticity_model.py`, `prediction_model.py`, and `confidence_scorer.py` exist in `backend/app/analytics/`
-- These modules implement log-log regression (scipy), confidence scoring, and prediction models
-
-**What's missing:**
-- These modules are NOT called by any API endpoint
-- Elasticities are currently pre-computed during mock data seeding, not calculated on demand
-- The simulator uses simplified calculations instead of the full prediction model
-- Confidence levels are assigned statically in seed data, not computed by `confidence_scorer.py`
-
-**Impact:** The system displays plausible data but does not perform real-time analytics. This is acceptable for a demo/prototype but would need to be connected before working with real data.
-
-**Affected modules:** History, Simulator, Recommendations, Confidence badges
+**Resolution:** `predict_scenario()` and `score_confidence()` are now integrated with the simulator API endpoints. The simulator uses real cost-based margin calculations (not flat 30%) and dynamically computes confidence levels from elasticity statistics (p-value, R², sample size). Additionally, the simulator now supports drill-down by level, multi-scenario comparison with rankings, and best scenario recommendation by objective.
 
 ---
 
@@ -149,7 +135,7 @@ These are intentional adaptations from the original design that are NOT gaps —
 
 | Gap | Severity | Effort | Priority | When to Address |
 |-----|----------|--------|----------|-----------------|
-| GAP-01: Analytics engine | Medium | High | P2 | Before real data integration |
+| ~~GAP-01: Analytics engine~~ | ~~Medium~~ | ~~High~~ | ~~P2~~ | **CLOSED** (2026-03-19) |
 | GAP-02: PDF/Excel export | Low | Medium | P3 | Before stakeholder demos |
 | GAP-03: Authentication | Medium | Low | P1 | Before sharing with broader audience |
 | GAP-04: Alembic migrations | Low | Medium | P2 | Before real data integration |

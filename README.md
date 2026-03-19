@@ -4,15 +4,16 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 
 ## Estado Actual
 
-- [x] Backend (FastAPI) — 19 endpoints, 12 unit tests passing
+- [x] Backend (FastAPI) — 23 endpoints, 21 unit tests passing
 - [x] Frontend (Next.js) — 5 módulos con datos en vivo
 - [x] Motor de elasticidades (log-log regression con scipy)
 - [x] Generador de datos mock (86 SKUs, 25 distribuidores, 24 meses)
 - [x] Docker setup para desarrollo local
 - [x] Deploy en producción (Railway)
 - [x] E2E tests con Playwright
-- [ ] Integración del módulo analytics avanzado con endpoints
+- [x] Integración del módulo analytics avanzado (predict_scenario + confidence_scorer) con API
 - [x] Visual refinement v2 — USG brand colors, Inter font, Tableau charts, dark mode, animations
+- [x] Simulador potenciado — drill-down, comparación multi-escenario, mejor escenario por objetivo
 
 ## URLs de Producción
 
@@ -28,7 +29,7 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 |--------|------|-------------|
 | Overview | `/` | Dashboard con 6 KPIs y drill-down por categoría, segmento y territorio |
 | Historial | `/history` | Elasticidades históricas, tendencias precio-volumen, scatter plot |
-| Simulador | `/simulator` | Simulador de escenarios de precio con curvas predictivas |
+| Simulador | `/simulator` | Simulador de escenarios con drill-down, comparación multi-escenario y recomendación de mejor escenario |
 | Recomendaciones | `/recommendations` | Recomendaciones por segmento/territorio/SKU con export CSV |
 | Passthrough | `/passthrough` | Análisis de rebates, descuentos y precio neto |
 
@@ -75,7 +76,7 @@ npm run dev
 
 ## Tests
 
-### Backend (unit tests) — 12/12
+### Backend (unit tests) — 21/21
 
 ```bash
 cd backend
@@ -101,7 +102,7 @@ BASE_URL=http://localhost:3000 npx playwright test
 |-------|-------|-------------|
 | Overview | 4 | KPIs cargan, gráficas renderizan, filtros presentes, filtro de segmento funciona |
 | Historial | 5 | Tendencias precio-volumen, scatter plot, tabla de elasticidades, selector de nivel de análisis |
-| Simulador | 6 | Controles de escenario, curva precio-volumen-margen, slider de precio, formulario de guardado, secciones de escenarios |
+| Simulador | 6+ | Tabs (Simular/Comparar/Mejor), curva precio-volumen-margen, slider de precio, drill-down por nivel, comparación multi-escenario, mejor escenario por objetivo |
 | Recomendaciones | 5 | Tabla con datos, métricas agregadas, badges de acción/confianza, botones de export |
 | Passthrough | 5 | Descomposición por segmento, rebate por categoría, evolución de componentes de precio |
 | Navegación | 3 | Sidebar con todos los links, navegación entre páginas, health check del API |
@@ -144,7 +145,11 @@ BASE_URL=http://localhost:3000 npx playwright test
 | POST | `/api/simulator/scenarios` | Crear escenario con simulación |
 | GET | `/api/simulator/scenarios/{id}/results` | Resultados de un escenario |
 | GET | `/api/simulator/quick-simulate` | Simulación rápida (curva) |
+| GET | `/api/simulator/scenarios/{id}/summary` | Resumen agregado del escenario (totales, deltas, desglose) |
+| GET | `/api/simulator/scenarios/{id}/results-grouped` | Resultados agrupados por categoría/segmento/territorio |
 | GET | `/api/simulator/compare` | Comparar escenario vs base |
+| GET | `/api/simulator/compare-multi` | Comparar múltiples escenarios con rankings |
+| GET | `/api/simulator/best-scenario` | Mejor escenario según objetivo (margen/volumen/ingreso) |
 | GET | `/api/recommendations` | Recomendaciones con filtros |
 | GET | `/api/recommendations/summary` | Resumen agregado |
 | GET | `/api/passthrough/by-segment` | Passthrough por segmento |

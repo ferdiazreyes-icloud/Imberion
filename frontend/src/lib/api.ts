@@ -1,4 +1,7 @@
-import type { ElasticityData, OverviewData, RecommendationData } from "./types";
+import type {
+  ElasticityData, OverviewData, RecommendationData,
+  ScenarioSummary, GroupedResult, MultiCompareResponse, BestScenarioResponse,
+} from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -44,6 +47,14 @@ export const getScenarioResults = (id: number) =>
   fetchAPI<Array<{ id: number; product_name: string; price_change_pct: number; expected_volume: number; expected_revenue: number; confidence_level: string }>>(`/api/simulator/scenarios/${id}/results`);
 export const quickSimulate = (params?: Record<string, string>) =>
   fetchAPI<{ elasticity_used: number; confidence: string; curve: Array<{ price_change_pct: number; price: number; volume: number; revenue: number; margin: number }> }>(`/api/simulator/quick-simulate${toQueryString(params)}`);
+export const getScenarioSummary = (id: number) =>
+  fetchAPI<ScenarioSummary>(`/api/simulator/scenarios/${id}/summary`);
+export const getScenarioResultsGrouped = (id: number, groupBy: string) =>
+  fetchAPI<GroupedResult[]>(`/api/simulator/scenarios/${id}/results-grouped?group_by=${groupBy}`);
+export const compareMultiScenarios = (ids: number[]) =>
+  fetchAPI<MultiCompareResponse>(`/api/simulator/compare-multi?scenario_ids=${ids.join(",")}`);
+export const getBestScenario = (objective: string) =>
+  fetchAPI<BestScenarioResponse>(`/api/simulator/best-scenario?objective=${objective}`);
 
 // Recommendations
 export const getRecommendations = (params?: Record<string, string>) =>
