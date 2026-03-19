@@ -4,24 +4,33 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 
 ## Estado Actual
 
-- [x] Backend (FastAPI) — 18 endpoints, 12 tests passing
-- [x] Frontend (Next.js) — 5 módulos, builds OK
-- [x] Motor de elasticidades (log-log regression)
+- [x] Backend (FastAPI) — 19 endpoints, 12 unit tests passing
+- [x] Frontend (Next.js) — 5 módulos con datos en vivo
+- [x] Motor de elasticidades (log-log regression con scipy)
 - [x] Generador de datos mock (86 SKUs, 25 distribuidores, 24 meses)
 - [x] Docker setup para desarrollo local
-- [x] Configurado para deploy en Railway
-- [ ] Deploy en producción (Railway)
+- [x] Deploy en producción (Railway)
+- [x] E2E tests con Playwright
 - [ ] Integración del módulo analytics avanzado con endpoints
+- [ ] Pulido visual (responsive, dark mode, tooltips mejorados)
+
+## URLs de Producción
+
+| Servicio | URL |
+|----------|-----|
+| Frontend | https://usg-frontend-production.up.railway.app |
+| Backend API | https://usg-backend-production.up.railway.app |
+| API Docs (Swagger) | https://usg-backend-production.up.railway.app/docs |
 
 ## Módulos
 
 | Módulo | Ruta | Descripción |
 |--------|------|-------------|
-| Overview | `/` | Dashboard con 6 KPIs y drill-down |
-| History | `/history` | Elasticidades históricas y tendencias |
-| Simulator | `/simulator` | Simulador de escenarios de precio |
-| Recommendations | `/recommendations` | Recomendaciones por segmento/territorio |
-| Passthrough | `/passthrough` | Análisis de rebates y precio neto |
+| Overview | `/` | Dashboard con 6 KPIs y drill-down por categoría, segmento y territorio |
+| Historial | `/history` | Elasticidades históricas, tendencias precio-volumen, scatter plot |
+| Simulador | `/simulator` | Simulador de escenarios de precio con curvas predictivas |
+| Recomendaciones | `/recommendations` | Recomendaciones por segmento/territorio/SKU con export CSV |
+| Passthrough | `/passthrough` | Análisis de rebates, descuentos y precio neto |
 
 ## Stack
 
@@ -31,6 +40,7 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 | Backend | FastAPI, SQLAlchemy 2, Pydantic 2, scipy |
 | Database | PostgreSQL 16 |
 | Deploy | Railway (Docker) |
+| Tests | pytest (backend), Playwright (e2e) |
 
 ## Desarrollo Local
 
@@ -65,35 +75,53 @@ npm run dev
 
 ## Tests
 
+### Backend (unit tests)
+
 ```bash
 cd backend
 source .venv/bin/activate
 python -m pytest tests/ -v
 ```
 
+### E2E (Playwright)
+
+```bash
+cd e2e
+npm install
+npx playwright install chromium
+# Against production:
+npx playwright test
+# Against local:
+BASE_URL=http://localhost:3000 npx playwright test
+```
+
 ## Deploy en Railway
 
 ### Backend
-1. Crear nuevo servicio en Railway apuntando a este repo
-2. Set root directory: `backend`
-3. Railway detecta el Dockerfile automáticamente
-4. Agregar PostgreSQL addon
-5. Variables de entorno:
-   - `DATABASE_URL` — se configura automáticamente con el addon de PostgreSQL
-   - `CORS_ORIGINS` — `["https://tu-frontend.railway.app"]`
-6. Después del deploy, seed data: `POST https://tu-backend.railway.app/api/admin/seed`
+
+1. Crear servicio → repo `ferdiazreyes-icloud/Imberion`, root directory `/backend`
+2. Agregar PostgreSQL addon
+3. Variables de entorno:
+   - `DATABASE_URL` → `${{Postgres.DATABASE_URL}}` (referencia al addon)
+   - `CORS_ORIGINS` → `["https://usg-frontend-production.up.railway.app"]`
+   - `DEBUG` → `false`
+4. Generar dominio público en Settings > Networking
+5. Seed data: `curl -X POST https://usg-backend-production.up.railway.app/api/admin/seed`
 
 ### Frontend
-1. Crear nuevo servicio en Railway apuntando a este repo
-2. Set root directory: `frontend`
-3. Variables de entorno:
-   - `NEXT_PUBLIC_API_URL` — URL del backend (ej: `https://tu-backend.railway.app`)
+
+1. Crear servicio → mismo repo, root directory `/frontend`
+2. Variables de entorno:
+   - `NEXT_PUBLIC_API_URL` → `https://usg-backend-production.up.railway.app`
+3. Generar dominio público en Settings > Networking
+
+**Nota:** `NEXT_PUBLIC_API_URL` es una variable de build-time. El Dockerfile usa `ARG` para inyectarla durante el build. Si la cambias, necesitas hacer redeploy.
 
 ## API Endpoints
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| GET | `/api/health` | Health check |
+| GET | `/api/health` | Health check (verifica BD) |
 | GET | `/api/overview` | KPIs agregados |
 | GET | `/api/overview/by-category` | Drill-down por categoría |
 | GET | `/api/overview/by-segment` | Drill-down por segmento |
@@ -101,17 +129,29 @@ python -m pytest tests/ -v
 | GET | `/api/history/elasticities` | Elasticidades con filtros |
 | GET | `/api/history/trends` | Tendencias precio-volumen |
 | GET | `/api/history/price-volume` | Scatter precio vs volumen |
-| GET | `/api/simulator/scenarios` | Listar escenarios |
-| POST | `/api/simulator/scenarios` | Crear escenario |
-| GET | `/api/simulator/scenarios/{id}/results` | Resultados |
-| POST | `/api/simulator/quick-simulate` | Simulación rápida |
-| GET | `/api/recommendations` | Recomendaciones |
-| GET | `/api/recommendations/summary` | Resumen |
+| GET | `/api/simulator/scenarios` | Listar escenarios guardados |
+| POST | `/api/simulator/scenarios` | Crear escenario con simulación |
+| GET | `/api/simulator/scenarios/{id}/results` | Resultados de un escenario |
+| POST | `/api/simulator/quick-simulate` | Simulación rápida (curva) |
+| GET | `/api/simulator/compare` | Comparar escenario vs base |
+| GET | `/api/recommendations` | Recomendaciones con filtros |
+| GET | `/api/recommendations/summary` | Resumen agregado |
 | GET | `/api/passthrough/by-segment` | Passthrough por segmento |
 | GET | `/api/passthrough/by-category` | Passthrough por categoría |
-| GET | `/api/passthrough/trends` | Tendencias |
+| GET | `/api/passthrough/trends` | Tendencias de componentes |
 | GET | `/api/export/recommendations-csv` | Exportar CSV |
 | GET | `/api/export/executive-summary` | Informe ejecutivo JSON |
 | POST | `/api/admin/seed` | Poblar BD con datos mock |
 
-Todos los endpoints aceptan filtros: `segment`, `territory_id`, `region`, `category_id`, `product_id`, `confidence_level`.
+### Filtros Globales
+
+Todos los GET endpoints aceptan estos query params opcionales:
+
+| Parámetro | Tipo | Ejemplo |
+|-----------|------|---------|
+| `segment` | string | `oro`, `plata`, `bronce` |
+| `territory_id` | int | `1` |
+| `region` | string | `Norte`, `Centro` |
+| `category_id` | int | `1` |
+| `product_id` | int | `15` |
+| `confidence_level` | string | `high`, `medium`, `low` |
