@@ -165,3 +165,148 @@ def test_export_executive_summary(client, db):
     data = response.json()
     assert "title" in data
     assert "top_recommendations" in data
+
+
+# ---------------------------------------------------------------------------
+# Enhanced simulator tests
+# ---------------------------------------------------------------------------
+
+def _create_test_scenario(client, db):
+    """Seed data and create a scenario, return scenario id."""
+    _seed_basic_data(db)
+    resp = client.post("/api/simulator/scenarios", json={
+        "name": "Test +5%",
+        "description": "Test scenario",
+        "price_changes": [{"change_pct": 5.0}],
+    })
+    assert resp.status_code == 200
+    return resp.json()["id"]
+
+
+def test_create_scenario_uses_real_margin(client, db):
+    """Verify that create_scenario uses predict_scenario (not flat 30%)."""
+    sid = _create_test_scenario(client, db)
+    resp = client.get(f"/api/simulator/scenarios/{sid}/results")
+    assert resp.status_code == 200
+    results = resp.json()
+    assert len(results) >= 1
+    r = results[0]
+    # With predict_scenario (cost_pct=0.70), margin should NOT equal revenue * 0.30
+    # For a +5% change with elasticity -1.2:
+    #   new_volume = 100 * (1 + (-1.2 * 0.05)) = 94
+    #   new_price = 220 * 1.05 = 231
+    #   new_revenue = 94 * 231 = 21714
+    #   unit_cost = 220 * 0.70 = 154
+    #   new_margin = (231 - 154) * 94 = 7238
+    # So margin should be ~7238, NOT 21714 * 0.30 = 6514.2
+    assert r["expected_margin"] > 0
+    assert r["expected_volume"] > 0
+    # Margin should NOT be exactly 30% of revenue (old behavior)
+    ratio = r["expected_margin"] / r["expected_revenue"] if r["expected_revenue"] else 0
+    assert abs(ratio - 0.30) > 0.001, "Margin should use real cost calculation, not flat 30%"
+
+
+def test_quick_simulate_uses_real_margin(client, db):
+    """Verify quick-simulate curve uses predict_scenario with real cost calc.
+    At +10% price, margin/revenue ratio should differ from 30% because
+    unit cost stays fixed while price increases."""
+    _seed_basic_data(db)
+    resp = client.get("/api/simulator/quick-simulate?product_id=1&price_change_pct=5")
+    data = resp.json()
+    # At +10% change, margin should NOT equal revenue * 0.30
+    # because unit_cost = base_price * 0.70 stays fixed while new_price increases
+    point_10 = next(p for p in data["curve"] if p["price_change_pct"] == 10)
+    ratio = point_10["margin"] / point_10["revenue"] if point_10["revenue"] else 0
+    assert ratio > 0.30, "At +10% price, margin ratio should exceed 30% (fixed cost model)"
+
+
+def test_scenario_summary(client, db):
+    sid = _create_test_scenario(client, db)
+    resp = client.get(f"/api/simulator/scenarios/{sid}/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["scenario_name"] == "Test +5%"
+    assert "total_volume" in data
+    assert "total_revenue" in data
+    assert "total_margin" in data
+    assert "delta_volume" in data
+    assert "delta_revenue_pct" in data
+    assert len(data["by_category"]) >= 1
+    assert data["by_category"][0]["name"] == "Tableros"
+
+
+def test_scenario_results_grouped_by_category(client, db):
+    sid = _create_test_scenario(client, db)
+    resp = client.get(f"/api/simulator/scenarios/{sid}/results-grouped?group_by=category")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) >= 1
+    assert data[0]["group_name"] == "Tableros"
+    assert data[0]["product_count"] >= 1
+    assert "total_revenue" in data[0]
+    assert "avg_confidence" in data[0]
+
+
+def test_scenario_results_grouped_by_segment(client, db):
+    """Create scenario with segment and group by segment."""
+    _seed_basic_data(db)
+    resp = client.post("/api/simulator/scenarios", json={
+        "name": "Segment test",
+        "price_changes": [{"change_pct": 3.0, "segment": "oro"}],
+    })
+    sid = resp.json()["id"]
+    resp = client.get(f"/api/simulator/scenarios/{sid}/results-grouped?group_by=segment")
+    assert resp.status_code == 200
+
+
+def test_compare_multi_scenarios(client, db):
+    _seed_basic_data(db)
+    # Create two scenarios
+    r1 = client.post("/api/simulator/scenarios", json={
+        "name": "Low +3%", "price_changes": [{"change_pct": 3.0}],
+    })
+    r2 = client.post("/api/simulator/scenarios", json={
+        "name": "High +10%", "price_changes": [{"change_pct": 10.0}],
+    })
+    sid1 = r1.json()["id"]
+    sid2 = r2.json()["id"]
+
+    resp = client.get(f"/api/simulator/compare-multi?scenario_ids={sid1},{sid2}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["scenarios"]) == 2
+    assert "rankings" in data
+    assert "best_for_volume" in data["rankings"]
+    assert "best_for_margin" in data["rankings"]
+    # The +3% scenario should have more volume (less elastic loss)
+    assert data["rankings"]["best_for_volume"] == sid1
+
+
+def test_compare_multi_requires_two(client):
+    resp = client.get("/api/simulator/compare-multi?scenario_ids=1")
+    assert resp.status_code == 400
+
+
+def test_best_scenario(client, db):
+    _seed_basic_data(db)
+    client.post("/api/simulator/scenarios", json={
+        "name": "A", "price_changes": [{"change_pct": 5.0}],
+    })
+    client.post("/api/simulator/scenarios", json={
+        "name": "B", "price_changes": [{"change_pct": -5.0}],
+    })
+
+    resp = client.get("/api/simulator/best-scenario?objective=margin")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["objective"] == "margin"
+    assert "best" in data
+    assert data["best"]["scenario_name"] in ["A", "B"]
+    assert "runners_up" in data
+
+
+def test_best_scenario_no_scenarios(client, db):
+    """Should return 404 when no scenarios exist."""
+    _seed_basic_data(db)
+    resp = client.get("/api/simulator/best-scenario?objective=volume")
+    assert resp.status_code == 404

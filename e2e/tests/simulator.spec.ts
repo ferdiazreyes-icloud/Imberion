@@ -6,6 +6,8 @@ test.describe("Simulador de Precios", () => {
     await expect(page.locator("main h1")).toContainText("Simulador de Precios");
     await expect(page.locator("text=Configurar Escenario")).toBeVisible();
     await expect(page.getByText("Cambio de precio (%)", { exact: true })).toBeVisible();
+
+    await page.screenshot({ path: "screenshots/simulator-01-page-loaded.png", fullPage: true });
   });
 
   test("displays price-volume-margin curve", async ({ page }) => {
@@ -15,6 +17,8 @@ test.describe("Simulador de Precios", () => {
     // Chart should render SVG
     const chart = page.locator(".recharts-responsive-container svg").first();
     await expect(chart).toBeVisible({ timeout: 10000 });
+
+    await page.screenshot({ path: "screenshots/simulator-02-curve.png", fullPage: true });
   });
 
   test("price slider changes value display", async ({ page }) => {
@@ -24,14 +28,20 @@ test.describe("Simulador de Precios", () => {
 
     // Default value should be +5%
     await expect(page.locator("text=+5%")).toBeVisible();
+
+    await page.screenshot({ path: "screenshots/simulator-03-slider.png", fullPage: true });
   });
 
-  test("simulation data loads", async ({ page }) => {
+  test("simulation data loads with elasticity info", async ({ page }) => {
     await page.goto("/simulator");
-    // Wait for the curve chart to render (indicates API responded)
     await expect(page.locator("text=Curva Precio-Volumen-Margen")).toBeVisible({ timeout: 15000 });
     const chart = page.locator(".recharts-responsive-container svg").first();
     await expect(chart).toBeVisible({ timeout: 10000 });
+
+    // Elasticity value should be shown
+    await expect(page.locator("text=Elasticidad utilizada")).toBeVisible();
+
+    await page.screenshot({ path: "screenshots/simulator-04-elasticity-info.png", fullPage: true });
   });
 
   test("scenario save form exists", async ({ page }) => {
@@ -39,11 +49,12 @@ test.describe("Simulador de Precios", () => {
     const nameInput = page.locator('input[placeholder*="Aumento"]');
     await expect(nameInput).toBeVisible();
     await expect(page.locator("text=Guardar Escenario")).toBeVisible();
+
+    await page.screenshot({ path: "screenshots/simulator-05-save-form.png", fullPage: true });
   });
 
   test("scenario sections are visible on scroll", async ({ page }) => {
     await page.goto("/simulator");
-    // These sections may be below the fold — scroll to them
     const savedSection = page.getByRole("heading", { name: "Escenarios Guardados" });
     await savedSection.scrollIntoViewIfNeeded();
     await expect(savedSection).toBeVisible({ timeout: 10000 });
@@ -51,5 +62,7 @@ test.describe("Simulador de Precios", () => {
     const resultsSection = page.locator("text=Resultados del Escenario");
     await resultsSection.scrollIntoViewIfNeeded();
     await expect(resultsSection).toBeVisible();
+
+    await page.screenshot({ path: "screenshots/simulator-06-sections.png", fullPage: true });
   });
 });

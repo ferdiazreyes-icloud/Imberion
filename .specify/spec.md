@@ -22,8 +22,12 @@ A B2B pricing decision engine that transforms sell-in data into actionable prici
 
 ### 3. Predictive Pricing / Scenario Simulator
 - Interactive price change slider (-20% to +20%)
-- Price-volume-margin curves
+- Price-volume-margin curves with real cost-based margin calculation
 - Save and compare scenarios
+- Drill-down from portfolio → category → segment → territory → SKU
+- Multi-scenario comparison (2-4 side-by-side) with automatic ranking
+- Best scenario recommendation by objective (maximize margin, volume, or revenue)
+- Integrated analytics engine (predict_scenario + confidence_scorer)
 
 ### 4. Recommendations
 - Actionable pricing recommendations by segment/territory/SKU
