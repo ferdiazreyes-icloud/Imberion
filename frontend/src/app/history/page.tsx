@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  ScatterChart, Scatter, ZAxis, Legend,
+  ScatterChart, Scatter, Legend,
 } from "recharts";
 import { GlobalFilters } from "@/components/filters/global-filters";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import { useFilters } from "@/hooks/useFilters";
 import { getElasticities, getTrends, getPriceVolume } from "@/lib/api";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { CHART_COLORS, tooltipStyle, axisTickStyle, gridStyle } from "@/lib/chart-theme";
 
 export default function HistoryPage() {
   const { getActiveParams } = useFilters();
@@ -36,20 +37,24 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Historial y Elasticidades</h1>
-        <p className="text-sm text-gray-500">Lectura backward-looking de precios, volumen y elasticidades</p>
+      <div className="animate-fade-in">
+        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Historial y Elasticidades</h1>
+        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Lectura backward-looking de precios, volumen y elasticidades</p>
       </div>
 
       <GlobalFilters />
 
       {isLoading && (
         <div className="flex items-center justify-center h-32">
-          <p className="text-gray-400 animate-pulse">Cargando datos...</p>
+          <div className="flex gap-2">
+            <div className="h-2 w-2 rounded-full animate-pulse" style={{ background: "var(--usg-red)" }} />
+            <div className="h-2 w-2 rounded-full animate-pulse" style={{ background: "var(--usg-red)", animationDelay: "0.2s" }} />
+            <div className="h-2 w-2 rounded-full animate-pulse" style={{ background: "var(--usg-red)", animationDelay: "0.4s" }} />
+          </div>
         </div>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 animate-fade-in">
         <Select
           label="Nivel de analisis"
           options={[
@@ -63,7 +68,6 @@ export default function HistoryPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Price & Volume Trends */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Tendencia Precio Neto y Volumen — {trends?.node_label || "Cargando..."}</CardTitle>
@@ -71,21 +75,20 @@ export default function HistoryPage() {
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
               <LineChart data={trends?.data || []}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="left" tickFormatter={(v) => `$${(v).toFixed(0)}`} />
-                <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => formatNumber(v)} />
-                <Tooltip />
+                <CartesianGrid {...gridStyle} />
+                <XAxis dataKey="period" tick={axisTickStyle} />
+                <YAxis yAxisId="left" tick={axisTickStyle} tickFormatter={(v) => `$${(v).toFixed(0)}`} />
+                <YAxis yAxisId="right" orientation="right" tick={axisTickStyle} tickFormatter={(v) => formatNumber(v)} />
+                <Tooltip {...tooltipStyle} />
                 <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="net_price" stroke="#2563eb" name="Precio Neto" strokeWidth={2} dot={false} />
-                <Line yAxisId="left" type="monotone" dataKey="list_price" stroke="#9ca3af" name="Precio Lista" strokeWidth={1} strokeDasharray="5 5" dot={false} />
-                <Line yAxisId="right" type="monotone" dataKey="volume" stroke="#16a34a" name="Volumen" strokeWidth={2} dot={false} />
+                <Line yAxisId="left" type="monotone" dataKey="net_price" stroke={CHART_COLORS.netPrice} name="Precio Neto" strokeWidth={2.5} dot={false} />
+                <Line yAxisId="left" type="monotone" dataKey="list_price" stroke={CHART_COLORS.listPrice} name="Precio Lista" strokeWidth={1.5} strokeDasharray="5 5" dot={false} />
+                <Line yAxisId="right" type="monotone" dataKey="volume" stroke={CHART_COLORS.volume} name="Volumen" strokeWidth={2.5} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Price-Volume Scatter */}
         <Card>
           <CardHeader>
             <CardTitle>Precio vs Volumen (Elasticidad Visual)</CardTitle>
@@ -93,17 +96,16 @@ export default function HistoryPage() {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <ScatterChart>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="avg_price" name="Precio" tickFormatter={(v) => `$${v.toFixed(0)}`} />
-                <YAxis dataKey="total_volume" name="Volumen" tickFormatter={(v) => formatNumber(v)} />
-                <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-                <Scatter data={priceVolume || []} fill="#7c3aed" />
+                <CartesianGrid {...gridStyle} />
+                <XAxis dataKey="avg_price" name="Precio" tick={axisTickStyle} tickFormatter={(v) => `$${v.toFixed(0)}`} />
+                <YAxis dataKey="total_volume" name="Volumen" tick={axisTickStyle} tickFormatter={(v) => formatNumber(v)} />
+                <Tooltip {...tooltipStyle} cursor={{ strokeDasharray: "3 3" }} />
+                <Scatter data={priceVolume || []} fill={CHART_COLORS.secondary} fillOpacity={0.7} />
               </ScatterChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Elasticities Table */}
         <Card>
           <CardHeader>
             <CardTitle>Elasticidades Historicas</CardTitle>
@@ -111,23 +113,26 @@ export default function HistoryPage() {
           <CardContent>
             <div className="max-h-[300px] overflow-auto">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-white">
-                  <tr className="border-b text-left text-xs text-gray-500">
-                    <th className="pb-2">Nodo</th>
-                    <th className="pb-2">Coeficiente</th>
-                    <th className="pb-2">R²</th>
-                    <th className="pb-2">Confianza</th>
-                    <th className="pb-2">Muestra</th>
+                <thead className="sticky top-0" style={{ background: "var(--table-header-bg)" }}>
+                  <tr style={{ borderBottom: "1px solid var(--border-primary)" }}>
+                    <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Nodo</th>
+                    <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Coeficiente</th>
+                    <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>R²</th>
+                    <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Confianza</th>
+                    <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Muestra</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(elasticities || []).slice(0, 30).map((e) => (
-                    <tr key={e.id} className="border-b">
-                      <td className="py-2 font-medium">{e.node_type} #{e.node_id}</td>
-                      <td className="py-2 font-mono">{e.coefficient.toFixed(3)}</td>
-                      <td className="py-2">{e.r_squared.toFixed(3)}</td>
+                    <tr key={e.id} className="transition-colors" style={{ borderBottom: "1px solid var(--border-secondary)" }}
+                      onMouseEnter={(ev) => ev.currentTarget.style.background = "var(--table-row-hover)"}
+                      onMouseLeave={(ev) => ev.currentTarget.style.background = "transparent"}
+                    >
+                      <td className="py-2 font-medium" style={{ color: "var(--text-primary)" }}>{e.node_type} #{e.node_id}</td>
+                      <td className="py-2 font-mono" style={{ color: "var(--text-primary)" }}>{e.coefficient.toFixed(3)}</td>
+                      <td className="py-2" style={{ color: "var(--text-secondary)" }}>{e.r_squared.toFixed(3)}</td>
                       <td className="py-2"><Badge variant={e.confidence_level}>{e.confidence_level}</Badge></td>
-                      <td className="py-2 text-gray-500">{e.sample_size}</td>
+                      <td className="py-2" style={{ color: "var(--text-tertiary)" }}>{e.sample_size}</td>
                     </tr>
                   ))}
                 </tbody>

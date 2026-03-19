@@ -12,7 +12,7 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 - [x] Deploy en producción (Railway)
 - [x] E2E tests con Playwright
 - [ ] Integración del módulo analytics avanzado con endpoints
-- [ ] Pulido visual (responsive, dark mode, tooltips mejorados)
+- [x] Visual refinement v2 — USG brand colors, Inter font, Tableau charts, dark mode, animations
 
 ## URLs de Producción
 

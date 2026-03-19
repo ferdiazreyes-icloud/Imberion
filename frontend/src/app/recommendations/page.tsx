@@ -9,7 +9,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useFilters } from "@/hooks/useFilters";
 import { getRecommendations, getRecommendationsSummary, getExecutiveSummary, getExportCSVUrl } from "@/lib/api";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
+import { ACTION_COLORS, tooltipStyle, axisTickStyle, gridStyle } from "@/lib/chart-theme";
 
 export default function RecommendationsPage() {
   const { getActiveParams } = useFilters();
@@ -40,7 +41,6 @@ export default function RecommendationsPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Summary chart data
   const summaryBySegment = (summary || []).reduce((acc: Array<Record<string, unknown>>, item) => {
     const existing = acc.find((a) => a.segment === item.segment);
     if (existing) {
@@ -58,16 +58,30 @@ export default function RecommendationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between animate-fade-in">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Recomendaciones</h1>
-          <p className="text-sm text-gray-500">Recomendaciones de precio por segmento, territorio y SKU</p>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Recomendaciones</h1>
+          <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Recomendaciones de precio por segmento, territorio y SKU</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={handleExportCSV} className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50">
+          <button
+            onClick={handleExportCSV}
+            className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
+            style={{
+              borderColor: "var(--border-primary)",
+              color: "var(--text-secondary)",
+              background: "var(--bg-secondary)",
+            }}
+          >
             Exportar CSV
           </button>
-          <button onClick={handleExportSummary} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
+          <button
+            onClick={handleExportSummary}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+            style={{ background: "var(--usg-red)" }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "var(--usg-red-dark)"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "var(--usg-red)"}
+          >
             Informe Ejecutivo
           </button>
         </div>
@@ -77,48 +91,50 @@ export default function RecommendationsPage() {
 
       {isLoading && (
         <div className="flex items-center justify-center h-32">
-          <p className="text-gray-400 animate-pulse">Cargando datos...</p>
+          <div className="flex gap-2">
+            <div className="h-2 w-2 rounded-full animate-pulse" style={{ background: "var(--usg-red)" }} />
+            <div className="h-2 w-2 rounded-full animate-pulse" style={{ background: "var(--usg-red)", animationDelay: "0.2s" }} />
+            <div className="h-2 w-2 rounded-full animate-pulse" style={{ background: "var(--usg-red)", animationDelay: "0.4s" }} />
+          </div>
         </div>
       )}
 
-      {/* Summary */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader><CardTitle>Resumen por Segmento</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={summaryBySegment}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="segment" />
-                <YAxis />
-                <Tooltip />
+                <CartesianGrid {...gridStyle} />
+                <XAxis dataKey="segment" tick={axisTickStyle} />
+                <YAxis tick={axisTickStyle} />
+                <Tooltip {...tooltipStyle} />
                 <Legend />
-                <Bar dataKey="increase" fill="#2563eb" name="Aumentar" stackId="a" />
-                <Bar dataKey="protect" fill="#eab308" name="Proteger" stackId="a" />
-                <Bar dataKey="decrease" fill="#dc2626" name="Reducir" stackId="a" />
+                <Bar dataKey="increase" fill={ACTION_COLORS.increase} name="Aumentar" stackId="a" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="protect" fill={ACTION_COLORS.protect} name="Proteger" stackId="a" />
+                <Bar dataKey="decrease" fill={ACTION_COLORS.decrease} name="Reducir" stackId="a" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Stats */}
         <Card className="lg:col-span-2">
           <CardHeader><CardTitle>Metricas de Recomendaciones</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-lg bg-blue-50 p-4">
-                <p className="text-xs text-blue-600">Total recomendaciones</p>
-                <p className="text-2xl font-bold text-blue-900">{recommendations?.length || 0}</p>
+            <div className="grid grid-cols-3 gap-4 stagger-children">
+              <div className="rounded-lg p-4 animate-fade-in-up" style={{ background: "rgba(78,121,167,0.08)" }}>
+                <p className="text-xs font-medium" style={{ color: "#4E79A7" }}>Total recomendaciones</p>
+                <p className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{recommendations?.length || 0}</p>
               </div>
-              <div className="rounded-lg bg-green-50 p-4">
-                <p className="text-xs text-green-600">Alta confianza</p>
-                <p className="text-2xl font-bold text-green-900">
+              <div className="rounded-lg p-4 animate-fade-in-up" style={{ background: "var(--positive-bg)" }}>
+                <p className="text-xs font-medium" style={{ color: "var(--positive)" }}>Alta confianza</p>
+                <p className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
                   {(recommendations || []).filter((r) => r.confidence_level === "high").length}
                 </p>
               </div>
-              <div className="rounded-lg bg-amber-50 p-4">
-                <p className="text-xs text-amber-600">Oportunidades de aumento</p>
-                <p className="text-2xl font-bold text-amber-900">
+              <div className="rounded-lg p-4 animate-fade-in-up" style={{ background: "var(--warning-bg)" }}>
+                <p className="text-xs font-medium" style={{ color: "var(--warning)" }}>Oportunidades de aumento</p>
+                <p className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
                   {(recommendations || []).filter((r) => r.action_type === "increase").length}
                 </p>
               </div>
@@ -127,7 +143,6 @@ export default function RecommendationsPage() {
         </Card>
       </div>
 
-      {/* Recommendations Table */}
       <Card>
         <CardHeader>
           <CardTitle>Detalle de Recomendaciones</CardTitle>
@@ -135,32 +150,35 @@ export default function RecommendationsPage() {
         <CardContent>
           <div className="overflow-auto max-h-[500px]">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-white">
-                <tr className="border-b text-left text-xs text-gray-500">
-                  <th className="pb-2 pr-3">Producto</th>
-                  <th className="pb-2 pr-3">Categoria</th>
-                  <th className="pb-2 pr-3">Segmento</th>
-                  <th className="pb-2 pr-3">Territorio</th>
-                  <th className="pb-2 pr-3">Accion</th>
-                  <th className="pb-2 pr-3">Cambio %</th>
-                  <th className="pb-2 pr-3">Impacto Ingreso</th>
-                  <th className="pb-2 pr-3">Impacto Margen</th>
-                  <th className="pb-2">Confianza</th>
+              <thead className="sticky top-0" style={{ background: "var(--table-header-bg)" }}>
+                <tr style={{ borderBottom: "1px solid var(--border-primary)" }}>
+                  <th className="pb-2 pr-3 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Producto</th>
+                  <th className="pb-2 pr-3 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Categoria</th>
+                  <th className="pb-2 pr-3 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Segmento</th>
+                  <th className="pb-2 pr-3 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Territorio</th>
+                  <th className="pb-2 pr-3 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Accion</th>
+                  <th className="pb-2 pr-3 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Cambio %</th>
+                  <th className="pb-2 pr-3 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Impacto Ingreso</th>
+                  <th className="pb-2 pr-3 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Impacto Margen</th>
+                  <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Confianza</th>
                 </tr>
               </thead>
               <tbody>
                 {(recommendations || []).map((r) => (
-                  <tr key={r.id} className="border-b hover:bg-gray-50">
-                    <td className="py-2 pr-3 max-w-[200px] truncate font-medium">{r.product_name}</td>
-                    <td className="py-2 pr-3 text-gray-500">{r.category_name}</td>
+                  <tr key={r.id} className="transition-colors" style={{ borderBottom: "1px solid var(--border-secondary)" }}
+                    onMouseEnter={(ev) => ev.currentTarget.style.background = "var(--table-row-hover)"}
+                    onMouseLeave={(ev) => ev.currentTarget.style.background = "transparent"}
+                  >
+                    <td className="py-2 pr-3 max-w-[200px] truncate font-medium" style={{ color: "var(--text-primary)" }}>{r.product_name}</td>
+                    <td className="py-2 pr-3" style={{ color: "var(--text-tertiary)" }}>{r.category_name}</td>
                     <td className="py-2 pr-3"><Badge variant={r.segment}>{r.segment}</Badge></td>
-                    <td className="py-2 pr-3 text-gray-500">{r.territory_name}</td>
+                    <td className="py-2 pr-3" style={{ color: "var(--text-tertiary)" }}>{r.territory_name}</td>
                     <td className="py-2 pr-3"><Badge variant={r.action_type}>{r.action_type}</Badge></td>
-                    <td className={`py-2 pr-3 font-mono ${r.suggested_change_pct >= 0 ? "text-blue-600" : "text-red-600"}`}>
+                    <td className="py-2 pr-3 font-mono" style={{ color: r.suggested_change_pct >= 0 ? "var(--positive)" : "var(--negative)" }}>
                       {r.suggested_change_pct >= 0 ? "+" : ""}{r.suggested_change_pct.toFixed(1)}%
                     </td>
-                    <td className="py-2 pr-3">{formatCurrency(r.expected_impact_revenue)}</td>
-                    <td className="py-2 pr-3">{formatCurrency(r.expected_impact_margin)}</td>
+                    <td className="py-2 pr-3" style={{ color: "var(--text-secondary)" }}>{formatCurrency(r.expected_impact_revenue)}</td>
+                    <td className="py-2 pr-3" style={{ color: "var(--text-secondary)" }}>{formatCurrency(r.expected_impact_margin)}</td>
                     <td className="py-2"><Badge variant={r.confidence_level}>{r.confidence_level}</Badge></td>
                   </tr>
                 ))}
