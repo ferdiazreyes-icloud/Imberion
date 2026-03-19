@@ -138,7 +138,7 @@ def test_recommendations_summary(client, db):
 
 def test_quick_simulate(client, db):
     _seed_basic_data(db)
-    response = client.post("/api/simulator/quick-simulate?product_id=1&price_change_pct=5")
+    response = client.get("/api/simulator/quick-simulate?product_id=1&price_change_pct=5")
     assert response.status_code == 200
     data = response.json()
     assert "curve" in data

@@ -189,7 +189,7 @@ def compare_scenarios(scenario_id: int, db: Session = Depends(get_db)):
     }
 
 
-@router.post("/simulator/quick-simulate")
+@router.get("/simulator/quick-simulate")
 def quick_simulate(
     product_id: Optional[int] = None,
     category_id: Optional[int] = None,
@@ -222,7 +222,9 @@ def quick_simulate(
     if segment:
         base_q = base_q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
 
-    row = base_q.one()
+    row = base_q.one_or_none()
+    if not row or row[0] is None:
+        return {"elasticity_used": -1.0, "confidence": "low", "curve": []}
     base_price = float(row[0] or 100)
     base_volume = float(row[1] or 0)
     coefficient = elast.coefficient if elast else -1.0
