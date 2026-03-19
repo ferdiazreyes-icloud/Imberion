@@ -24,7 +24,13 @@ export function GlobalFilters() {
   const territories = (territoriesRaw || []).map((t) => ({ value: String(t.id), label: `${t.state} - ${t.municipality}` }));
 
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-white p-4">
+    <div
+      className="flex flex-wrap items-end gap-3 rounded-xl p-4 animate-fade-in"
+      style={{
+        background: "var(--bg-secondary)",
+        border: "1px solid var(--border-primary)",
+      }}
+    >
       <Select
         label="Segmento"
         options={[
@@ -59,7 +65,12 @@ export function GlobalFilters() {
       />
       <button
         onClick={clearFilters}
-        className="rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50"
+        className="rounded-lg border px-3 py-2 text-xs font-medium transition-colors hover:opacity-80"
+        style={{
+          borderColor: "var(--border-primary)",
+          color: "var(--text-secondary)",
+          background: "var(--bg-tertiary)",
+        }}
       >
         Limpiar filtros
       </button>

@@ -10,12 +10,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body>
         <Providers>
           <div className="flex h-screen">
             <Sidebar />
-            <main className="flex-1 overflow-auto bg-gray-50 p-6">
+            <main
+              className="flex-1 overflow-auto p-6"
+              style={{ background: "var(--bg-primary)" }}
+            >
               {children}
             </main>
           </div>
