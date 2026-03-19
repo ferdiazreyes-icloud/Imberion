@@ -75,7 +75,7 @@ npm run dev
 
 ## Tests
 
-### Backend (unit tests)
+### Backend (unit tests) — 12/12
 
 ```bash
 cd backend
@@ -83,7 +83,7 @@ source .venv/bin/activate
 python -m pytest tests/ -v
 ```
 
-### E2E (Playwright)
+### E2E (Playwright) — 28/28
 
 ```bash
 cd e2e
@@ -94,6 +94,17 @@ npx playwright test
 # Against local:
 BASE_URL=http://localhost:3000 npx playwright test
 ```
+
+#### Cobertura E2E
+
+| Suite | Tests | Qué verifica |
+|-------|-------|-------------|
+| Overview | 4 | KPIs cargan, gráficas renderizan, filtros presentes, filtro de segmento funciona |
+| Historial | 5 | Tendencias precio-volumen, scatter plot, tabla de elasticidades, selector de nivel de análisis |
+| Simulador | 6 | Controles de escenario, curva precio-volumen-margen, slider de precio, formulario de guardado, secciones de escenarios |
+| Recomendaciones | 5 | Tabla con datos, métricas agregadas, badges de acción/confianza, botones de export |
+| Passthrough | 5 | Descomposición por segmento, rebate por categoría, evolución de componentes de precio |
+| Navegación | 3 | Sidebar con todos los links, navegación entre páginas, health check del API |
 
 ## Deploy en Railway
 
