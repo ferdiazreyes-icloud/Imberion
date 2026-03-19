@@ -143,7 +143,7 @@ BASE_URL=http://localhost:3000 npx playwright test
 | GET | `/api/simulator/scenarios` | Listar escenarios guardados |
 | POST | `/api/simulator/scenarios` | Crear escenario con simulación |
 | GET | `/api/simulator/scenarios/{id}/results` | Resultados de un escenario |
-| POST | `/api/simulator/quick-simulate` | Simulación rápida (curva) |
+| GET | `/api/simulator/quick-simulate` | Simulación rápida (curva) |
 | GET | `/api/simulator/compare` | Comparar escenario vs base |
 | GET | `/api/recommendations` | Recomendaciones con filtros |
 | GET | `/api/recommendations/summary` | Resumen agregado |

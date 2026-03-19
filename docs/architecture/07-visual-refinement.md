@@ -141,9 +141,32 @@ Rules:
 
 ---
 
+## Post-Deploy Fix: Simulator Not Working
+
+**Issue:** The Simulator page loaded but displayed no curve — the slider and controls appeared but no data rendered.
+
+**Root cause:** HTTP method mismatch between frontend and backend.
+
+| Layer | Expected | Actual |
+|-------|----------|--------|
+| Backend endpoint | `@router.post("/simulator/quick-simulate")` | POST |
+| Frontend call | `fetchAPI(url)` (no method specified) | GET (default) |
+| Result | 405 Method Not Allowed | Silent failure, empty curve |
+
+**Fix (2 changes):**
+
+1. `backend/app/api/simulator.py` line 192: Changed `@router.post` to `@router.get` — this is a read-only query, GET is the correct HTTP method
+2. `backend/app/api/simulator.py` line 225: Changed `.one()` to `.one_or_none()` with safe fallback — prevents 500 crash when no transaction data matches the filters
+3. `backend/tests/test_api.py` line 141: Updated test from `client.post()` to `client.get()` to match
+
+**Impact:** The simulator now generates the price-volume-margin curve correctly when the user moves the slider.
+
+---
+
 ## Verification
 
 - Frontend build: Passed (all 6 routes generated, no warnings)
 - Backend tests: 12/12 passing
 - KPI card overflow: Fixed and verified on production
+- Simulator quick-simulate: Fixed POST→GET mismatch, verified on production
 - No breaking changes to API contracts or data flow

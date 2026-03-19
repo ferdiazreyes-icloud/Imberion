@@ -46,9 +46,10 @@ All endpoints under `/api/` prefix with OpenAPI auto-documentation at `/docs`.
 - E2E tests: Playwright tests covering all 5 modules against production
 - Mock data: 86 SKUs, 25 distributors, 10 territories, 24 months of transactions seeded
 - Auto table creation on startup + `/api/admin/seed` endpoint for remote seeding
+- Visual refinement v2: USG brand colors (#A6192E), Inter font, Tableau chart palette, dark/light mode, animations
+- Simulator quick-simulate fixed: POST→GET method alignment, safe fallback for empty data
 
 ## Pending Improvements
 
 - Integrate `app/analytics/` module (elasticity_model, confidence_scorer, prediction_model) with API endpoints
-- Visual polish: responsive improvements, dark mode, better tooltips
 - Authentication (currently open access)
