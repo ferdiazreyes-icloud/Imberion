@@ -118,8 +118,32 @@ Global CSS overrides for consistent chart styling:
 
 ---
 
+## Post-Deploy Fix: KPI Card Overflow
+
+**Issue:** Large numeric values (e.g. `$334,795,123`, `1,873,234 unidades`) overflowed KPI card boundaries on production.
+
+**Fix:** Compact number formatting with automatic abbreviation:
+
+| Value | Before | After |
+|-------|--------|-------|
+| `$334,795,123` | Truncated / overflow | `$334.8M` |
+| `1,873,234 unidades` | Wrapped / overflow | `1,873.2K unidades` |
+| `$185.77` | `$185.77` | `$185.77` (no change) |
+| `-2` | `-2` | `-2` (no change) |
+| `100.0 %` | `100.0 %` | `100.0%` |
+
+Rules:
+- Values >= 1M display as `X.XM`
+- Values >= 10K display as `X.XK`
+- Smaller values display normally
+- Unit labels rendered as separate elements with `shrink-0`
+- Card has `overflow-hidden` and values have `truncate` as safety net
+
+---
+
 ## Verification
 
-- Frontend build: Passed (all 6 routes generated)
+- Frontend build: Passed (all 6 routes generated, no warnings)
 - Backend tests: 12/12 passing
+- KPI card overflow: Fixed and verified on production
 - No breaking changes to API contracts or data flow
