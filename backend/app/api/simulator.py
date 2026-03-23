@@ -1,6 +1,8 @@
 from typing import List, Optional
+import io
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -13,9 +15,9 @@ from app.schemas.scenario import (
     ScenarioCreate, ScenarioOut, ScenarioResultOut,
     ScenarioSummaryResponse, GroupedResultOut,
     MultiCompareResponse, ScenarioCompareItem, ScenarioRankings,
-    BestScenarioResponse,
+    BestScenarioResponse, OptimizeRequest, SuggestionItem, ExcelScenarioResponse,
 )
-from app.analytics.prediction_model import predict_scenario, optimal_price_search
+from app.analytics.prediction_model import predict_scenario, optimal_price_search, suggest_improvements
 from app.analytics.confidence_scorer import score_confidence
 
 router = APIRouter()
@@ -593,3 +595,398 @@ def get_best_scenario(
         best=sorted_items[0],
         runners_up=sorted_items[1:4],
     )
+
+
+# ---------------------------------------------------------------------------
+# Shared helper: create scenario results from price changes
+# ---------------------------------------------------------------------------
+
+def _create_scenario_results(db: Session, scenario_id: int, price_changes: list) -> list:
+    """
+    Process a list of PriceChange-like dicts and create ScenarioResults.
+    Each item: {product_id?, category_id?, segment?, territory_id?, change_pct}
+    Returns list of created ScenarioResult objects.
+    """
+    results = []
+    for pc in price_changes:
+        product_ids = []
+        pid = pc.get("product_id")
+        cid = pc.get("category_id")
+        if pid:
+            product_ids = [pid]
+        elif cid:
+            product_ids = [p.id for p in db.query(Product.id).filter(Product.category_id == cid).all()]
+        else:
+            product_ids = [p.id for p in db.query(Product.id).all()]
+
+        elasticities = {
+            e.node_id: e
+            for e in db.query(Elasticity).filter(
+                Elasticity.node_type == "sku",
+                Elasticity.node_id.in_(product_ids),
+            ).all()
+        }
+
+        base_q = (
+            db.query(
+                Transaction.product_id,
+                func.avg(Transaction.net_price).label("price"),
+                func.sum(Transaction.volume).label("volume"),
+                func.sum(Transaction.revenue).label("revenue"),
+            )
+            .filter(Transaction.product_id.in_(product_ids))
+            .group_by(Transaction.product_id)
+        )
+        seg = pc.get("segment")
+        tid = pc.get("territory_id")
+        if seg:
+            base_q = base_q.join(Customer).filter(Customer.segment == seg)
+        if tid:
+            base_q = base_q.filter(Transaction.territory_id == tid)
+
+        base_data = {row.product_id: row for row in base_q.all()}
+
+        for p_id in product_ids:
+            elast = elasticities.get(p_id)
+            if elast and elast.type != "predicted":
+                predicted = next(
+                    (e for e in elasticities.values() if e.node_id == p_id and e.type == "predicted"), None
+                )
+                if predicted:
+                    elast = predicted
+
+            coefficient = elast.coefficient if elast else -1.0
+            if elast:
+                conf = score_confidence(elast.p_value, elast.r_squared, elast.sample_size)
+                confidence = conf["confidence_level"]
+            else:
+                confidence = "low"
+
+            base = base_data.get(p_id)
+            base_price = float(base.price) if base and base.price else 100.0
+            base_volume = float(base.volume) if base and base.volume else 0.0
+
+            pred = predict_scenario(
+                base_price=base_price,
+                base_volume=base_volume,
+                price_change_pct=pc["change_pct"],
+                elasticity=coefficient,
+            )
+
+            result = ScenarioResult(
+                scenario_id=scenario_id,
+                product_id=p_id,
+                segment=seg,
+                territory_id=tid,
+                price_change_pct=pc["change_pct"],
+                expected_volume=pred["new_volume"],
+                expected_revenue=pred["new_revenue"],
+                expected_margin=pred["new_margin"],
+                confidence_level=confidence,
+            )
+            db.add(result)
+            results.append(result)
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Endpoint 6: Excel template download
+# ---------------------------------------------------------------------------
+
+@router.get("/simulator/template-excel")
+def download_template_excel():
+    """Download Excel template for scenario upload."""
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Price Changes"
+
+    headers = ["sku_code", "category", "change_pct", "segment", "territory"]
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = openpyxl.styles.Font(bold=True)
+
+    # Example rows
+    examples = [
+        ("TB-001", "", 5.0, "oro", ""),
+        ("", "Plafones", -3.0, "", "Nuevo León"),
+        ("PL-005", "", 2.5, "plata", "CDMX"),
+    ]
+    for i, row in enumerate(examples, 2):
+        for col, val in enumerate(row, 1):
+            ws.cell(row=i, column=col, value=val)
+
+    # Auto-width
+    for col in ws.columns:
+        max_len = max(len(str(c.value or "")) for c in col) + 2
+        ws.column_dimensions[col[0].column_letter].width = max_len
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=scenario_template.xlsx"},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Endpoint 7: Excel upload → create scenario + suggestions
+# ---------------------------------------------------------------------------
+
+@router.post("/simulator/scenarios/from-excel")
+def create_scenario_from_excel(
+    file: UploadFile = File(...),
+    name: str = Form("Excel Scenario"),
+    objective: str = Form("margin"),
+    db: Session = Depends(get_db),
+):
+    """Upload Excel with price changes, create scenario, and get improvement suggestions."""
+    import openpyxl
+
+    # Parse Excel
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(file.file.read()))
+        ws = wb.active
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid Excel file")
+
+    # Build lookups
+    sku_to_product = {p.sku_code: p for p in db.query(Product).all()}
+    cat_name_to_id = {c.name.lower(): c.id for c in db.query(Category).all()}
+    state_to_territory = {t.state.lower(): t.id for t in db.query(Territory).all()}
+
+    price_changes = []
+    errors = []
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        if not row or all(v is None for v in row):
+            continue
+
+        sku_code = str(row[0]).strip() if row[0] else ""
+        category = str(row[1]).strip() if row[1] else ""
+        change_pct = row[2]
+        segment = str(row[3]).strip().lower() if row[3] else None
+        territory = str(row[4]).strip().lower() if row[4] else None
+
+        if change_pct is None:
+            errors.append(f"Row {row_idx}: missing change_pct")
+            continue
+
+        try:
+            change_pct = float(change_pct)
+        except (ValueError, TypeError):
+            errors.append(f"Row {row_idx}: invalid change_pct '{change_pct}'")
+            continue
+
+        pc = {"change_pct": change_pct}
+
+        if sku_code and sku_code in sku_to_product:
+            pc["product_id"] = sku_to_product[sku_code].id
+        elif category and category.lower() in cat_name_to_id:
+            pc["category_id"] = cat_name_to_id[category.lower()]
+        elif sku_code:
+            errors.append(f"Row {row_idx}: unknown SKU '{sku_code}'")
+            continue
+        elif category:
+            errors.append(f"Row {row_idx}: unknown category '{category}'")
+            continue
+        else:
+            errors.append(f"Row {row_idx}: must specify sku_code or category")
+            continue
+
+        if segment and segment in ("oro", "plata", "bronce"):
+            pc["segment"] = segment
+        if territory and territory in state_to_territory:
+            pc["territory_id"] = state_to_territory[territory]
+
+        price_changes.append(pc)
+
+    if not price_changes:
+        raise HTTPException(status_code=400, detail=f"No valid rows found. Errors: {errors}")
+
+    # Create scenario
+    scenario = Scenario(
+        name=name,
+        assumptions={"source": "excel", "errors": errors, "rows_parsed": len(price_changes)},
+    )
+    db.add(scenario)
+    db.flush()
+
+    _create_scenario_results(db, scenario.id, price_changes)
+    db.commit()
+    db.refresh(scenario)
+
+    # Generate suggestions
+    planned = []
+    base_dict = {}
+    elast_dict = {}
+    for pc in price_changes:
+        pid = pc.get("product_id")
+        if not pid:
+            continue
+        planned.append({"product_id": pid, "change_pct": pc["change_pct"]})
+
+    if planned:
+        pids = [p["product_id"] for p in planned]
+        base_rows = (
+            db.query(
+                Transaction.product_id,
+                func.avg(Transaction.net_price).label("price"),
+                func.sum(Transaction.volume).label("volume"),
+            )
+            .filter(Transaction.product_id.in_(pids))
+            .group_by(Transaction.product_id)
+            .all()
+        )
+        base_dict = {r.product_id: {"price": float(r.price or 100), "volume": float(r.volume or 0)} for r in base_rows}
+
+        elast_rows = db.query(Elasticity).filter(
+            Elasticity.node_type == "sku", Elasticity.node_id.in_(pids)
+        ).all()
+        elast_dict = {e.node_id: e.coefficient for e in elast_rows}
+
+    raw_suggestions = suggest_improvements(planned, base_dict, elast_dict, objective=objective)
+
+    # Enrich suggestions with product names
+    product_names = {p.id: p.name for p in db.query(Product).all()}
+    suggestions = [
+        SuggestionItem(
+            product_name=product_names.get(s["product_id"], ""),
+            **s,
+        )
+        for s in raw_suggestions
+    ]
+
+    return {
+        "scenario": ScenarioOut.model_validate(scenario),
+        "parsed_rows": len(price_changes),
+        "errors": errors,
+        "suggestions": suggestions,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Endpoint 8: Automatic optimization
+# ---------------------------------------------------------------------------
+
+@router.post("/simulator/scenarios/optimize")
+def create_optimized_scenario(
+    data: OptimizeRequest,
+    db: Session = Depends(get_db),
+):
+    """Create a scenario with automatically optimized prices."""
+    from app.api.overview import _parse_ids, _parse_strs
+
+    # Determine product scope
+    product_q = db.query(Product)
+    cat_ids = _parse_ids(data.category_id)
+    if cat_ids:
+        product_q = product_q.filter(Product.category_id.in_(cat_ids))
+    products = product_q.all()
+    product_ids = [p.id for p in products]
+
+    if not product_ids:
+        raise HTTPException(status_code=400, detail="No products in scope")
+
+    # Fetch elasticities
+    elasticities = {
+        e.node_id: e
+        for e in db.query(Elasticity).filter(
+            Elasticity.node_type == "sku",
+            Elasticity.node_id.in_(product_ids),
+        ).all()
+    }
+
+    # Fetch base data (optionally filtered by segment/territory/customer)
+    base_q = (
+        db.query(
+            Transaction.product_id,
+            func.avg(Transaction.net_price).label("price"),
+            func.sum(Transaction.volume).label("volume"),
+        )
+        .filter(Transaction.product_id.in_(product_ids))
+        .group_by(Transaction.product_id)
+    )
+    segs = _parse_strs(data.segment)
+    if segs:
+        base_q = base_q.join(Customer).filter(Customer.segment.in_(segs))
+    tid_list = _parse_ids(data.territory_id)
+    if tid_list:
+        base_q = base_q.filter(Transaction.territory_id.in_(tid_list))
+    cust_ids = _parse_ids(data.customer_id)
+    if cust_ids:
+        base_q = base_q.filter(Transaction.customer_id.in_(cust_ids))
+
+    base_data = {r.product_id: r for r in base_q.all()}
+
+    # Run optimization per product
+    price_changes = []
+    optimization_details = []
+    for pid in product_ids:
+        elast = elasticities.get(pid)
+        coefficient = elast.coefficient if elast else -1.0
+
+        base = base_data.get(pid)
+        base_price = float(base.price) if base and base.price else 100.0
+        base_volume = float(base.volume) if base and base.volume else 0.0
+
+        if base_volume == 0:
+            continue
+
+        opt = optimal_price_search(
+            base_price=base_price,
+            base_volume=base_volume,
+            elasticity=coefficient,
+            objective=data.objective,
+            price_range=(data.price_min_pct, data.price_max_pct),
+        )
+
+        price_changes.append({
+            "product_id": pid,
+            "change_pct": opt["optimal_change_pct"],
+            "segment": data.segment,
+            "territory_id": tid_list[0] if tid_list and len(tid_list) == 1 else None,
+        })
+
+        optimization_details.append({
+            "product_id": pid,
+            "optimal_change_pct": opt["optimal_change_pct"],
+            "optimal_value": opt["optimal_value"],
+        })
+
+    if not price_changes:
+        raise HTTPException(status_code=400, detail="No products with transaction data in scope")
+
+    # Create scenario
+    scenario = Scenario(
+        name=data.name,
+        assumptions={
+            "source": "optimization",
+            "objective": data.objective,
+            "price_range": [data.price_min_pct, data.price_max_pct],
+            "filters": {
+                "segment": data.segment,
+                "territory_id": data.territory_id,
+                "customer_id": data.customer_id,
+                "category_id": data.category_id,
+            },
+        },
+    )
+    db.add(scenario)
+    db.flush()
+
+    _create_scenario_results(db, scenario.id, price_changes)
+    db.commit()
+    db.refresh(scenario)
+
+    return {
+        "scenario": ScenarioOut.model_validate(scenario),
+        "products_optimized": len(price_changes),
+        "objective": data.objective,
+        "price_range": [data.price_min_pct, data.price_max_pct],
+        "optimization_details": optimization_details,
+    }

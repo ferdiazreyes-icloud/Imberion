@@ -404,3 +404,143 @@ def test_passthrough_with_comma_separated_territory_ids(client, db):
     tid = data["territory"].id
     resp = client.get(f"/api/passthrough/by-segment?territory_id={tid},9999")
     assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Excel template & upload tests
+# ---------------------------------------------------------------------------
+
+def test_download_template_excel(client):
+    resp = client.get("/api/simulator/template-excel")
+    assert resp.status_code == 200
+    assert "spreadsheetml" in resp.headers["content-type"]
+
+
+def test_upload_excel_scenario(client, db):
+    """Upload an Excel with one SKU price change and verify scenario creation."""
+    import openpyxl
+    import io
+
+    _seed_basic_data(db)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["sku_code", "category", "change_pct", "segment", "territory"])
+    ws.append(["TB-001", "", 5.0, "oro", ""])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    resp = client.post(
+        "/api/simulator/scenarios/from-excel",
+        files={"file": ("test.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"name": "Excel Test", "objective": "margin"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["parsed_rows"] == 1
+    assert data["scenario"]["name"] == "Excel Test"
+    assert "suggestions" in data
+
+
+def test_upload_excel_invalid_sku(client, db):
+    """Excel with unknown SKU should report errors."""
+    import openpyxl
+    import io
+
+    _seed_basic_data(db)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["sku_code", "category", "change_pct", "segment", "territory"])
+    ws.append(["INVALID-SKU", "", 5.0, "", ""])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    resp = client.post(
+        "/api/simulator/scenarios/from-excel",
+        files={"file": ("test.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"name": "Bad Excel"},
+    )
+    assert resp.status_code == 400
+    assert "No valid rows" in resp.json()["detail"]
+
+
+def test_upload_excel_by_category(client, db):
+    """Excel with category-level price change."""
+    import openpyxl
+    import io
+
+    _seed_basic_data(db)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["sku_code", "category", "change_pct", "segment", "territory"])
+    ws.append(["", "Tableros", 3.0, "", ""])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    resp = client.post(
+        "/api/simulator/scenarios/from-excel",
+        files={"file": ("test.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"name": "Category Excel"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["parsed_rows"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Optimization endpoint tests
+# ---------------------------------------------------------------------------
+
+def test_optimize_scenario(client, db):
+    """Optimize for margin with default range."""
+    _seed_basic_data(db)
+    resp = client.post("/api/simulator/scenarios/optimize", json={
+        "name": "Optimize Margin",
+        "objective": "margin",
+        "price_min_pct": -10.0,
+        "price_max_pct": 15.0,
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["objective"] == "margin"
+    assert data["products_optimized"] >= 1
+    assert data["scenario"]["name"] == "Optimize Margin"
+    assert len(data["optimization_details"]) >= 1
+
+
+def test_optimize_scenario_volume(client, db):
+    """Optimize for volume."""
+    _seed_basic_data(db)
+    resp = client.post("/api/simulator/scenarios/optimize", json={
+        "name": "Optimize Volume",
+        "objective": "volume",
+        "price_min_pct": -20.0,
+        "price_max_pct": 0.0,
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["objective"] == "volume"
+    # For volume maximization with negative elasticity, optimal should be a price decrease
+    detail = data["optimization_details"][0]
+    assert detail["optimal_change_pct"] <= 0
+
+
+def test_optimize_scenario_with_category_filter(client, db):
+    """Optimize with category filter."""
+    data = _seed_basic_data(db)
+    resp = client.post("/api/simulator/scenarios/optimize", json={
+        "name": "Optimize Category",
+        "objective": "revenue",
+        "price_min_pct": -5.0,
+        "price_max_pct": 10.0,
+        "category_id": str(data["category"].id),
+    })
+    assert resp.status_code == 200
+    assert resp.json()["products_optimized"] >= 1

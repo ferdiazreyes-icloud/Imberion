@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -14,6 +14,7 @@ import {
   quickSimulate, getScenarios, createScenario, getScenarioResults,
   getScenarioSummary, getScenarioResultsGrouped,
   compareMultiScenarios, getBestScenario, getExportScenarioCSVUrl,
+  getScenarioTemplateUrl, uploadScenarioExcel, createOptimizedScenario,
 } from "@/lib/api";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 import { CHART_COLORS, TABLEAU_PALETTE, tooltipStyle, axisTickStyle, gridStyle } from "@/lib/chart-theme";
@@ -23,7 +24,7 @@ import type { ScenarioCompareItem, GroupedResult } from "@/lib/types";
 // Tab types
 // ---------------------------------------------------------------------------
 type ResultTab = "portfolio" | "category" | "segment" | "territory" | "sku";
-type MainTab = "simulate" | "compare" | "best";
+type MainTab = "simulate" | "compare" | "best" | "excel" | "optimize";
 
 export default function SimulatorPage() {
   const { getActiveParams } = useFilters();
@@ -38,6 +39,24 @@ export default function SimulatorPage() {
   const [resultTab, setResultTab] = useState<ResultTab>("portfolio");
   const [compareIds, setCompareIds] = useState<number[]>([]);
   const [bestObjective, setBestObjective] = useState<string>("margin");
+
+  // Excel upload state
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [excelName, setExcelName] = useState("");
+  const [excelObjective, setExcelObjective] = useState("margin");
+  const [excelResult, setExcelResult] = useState<Record<string, unknown> | null>(null);
+  const [excelLoading, setExcelLoading] = useState(false);
+  const [excelError, setExcelError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Optimization state
+  const [optName, setOptName] = useState("");
+  const [optObjective, setOptObjective] = useState("margin");
+  const [optMinPct, setOptMinPct] = useState(-10);
+  const [optMaxPct, setOptMaxPct] = useState(15);
+  const [optResult, setOptResult] = useState<Record<string, unknown> | null>(null);
+  const [optLoading, setOptLoading] = useState(false);
+  const [optError, setOptError] = useState("");
 
   // Queries
   const { data: simulation, isLoading } = useQuery({
@@ -129,6 +148,8 @@ export default function SimulatorPage() {
           ["simulate", "Simular"],
           ["compare", "Comparar"],
           ["best", "Mejor Escenario"],
+          ["excel", "Cargar Excel"],
+          ["optimize", "Optimizar"],
         ] as [MainTab, string][]).map(([tab, label]) => (
           <button
             key={tab}
@@ -705,6 +726,344 @@ export default function SimulatorPage() {
             </p>
           )}
         </>
+      )}
+
+      {/* ================================================================= */}
+      {/* TAB: Cargar Excel                                                  */}
+      {/* ================================================================= */}
+      {mainTab === "excel" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Cargar Escenario desde Excel</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Download template */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => window.open(getScenarioTemplateUrl(), "_blank")}
+                  className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:opacity-80"
+                  style={{ borderColor: "var(--border-primary)", color: "var(--text-secondary)", background: "var(--bg-tertiary)" }}
+                >
+                  Descargar Plantilla Excel
+                </button>
+                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                  Llena la plantilla con tus cambios de precio planeados
+                </p>
+              </div>
+
+              {/* Upload */}
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Nombre del escenario"
+                  value={excelName}
+                  onChange={(e) => setExcelName(e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2 text-sm"
+                  style={{ background: "var(--input-bg)", borderColor: "var(--input-border)", color: "var(--text-primary)" }}
+                />
+
+                <div className="flex gap-3 items-end">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>Optimizar sugerencias para</label>
+                    <select
+                      value={excelObjective}
+                      onChange={(e) => setExcelObjective(e.target.value)}
+                      className="rounded-lg border px-3 py-2 text-sm"
+                      style={{ background: "var(--input-bg)", borderColor: "var(--input-border)", color: "var(--text-primary)" }}
+                    >
+                      <option value="margin">Margen</option>
+                      <option value="revenue">Ingreso</option>
+                      <option value="volume">Volumen</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div
+                  className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 cursor-pointer transition-colors hover:opacity-80"
+                  style={{ borderColor: "var(--border-primary)", background: "var(--bg-tertiary)" }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={(e) => setExcelFile(e.target.files?.[0] || null)}
+                  />
+                  {excelFile ? (
+                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{excelFile.name}</p>
+                  ) : (
+                    <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Click para seleccionar archivo Excel (.xlsx)</p>
+                  )}
+                </div>
+
+                <button
+                  disabled={!excelFile || !excelName || excelLoading}
+                  onClick={async () => {
+                    if (!excelFile || !excelName) return;
+                    setExcelLoading(true);
+                    setExcelError("");
+                    setExcelResult(null);
+                    try {
+                      const result = await uploadScenarioExcel(excelFile, excelName, excelObjective);
+                      setExcelResult(result);
+                      queryClient.invalidateQueries({ queryKey: ["scenarios"] });
+                    } catch (err) {
+                      setExcelError(err instanceof Error ? err.message : "Error uploading");
+                    } finally {
+                      setExcelLoading(false);
+                    }
+                  }}
+                  className="w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+                  style={{ background: "var(--usg-red)", color: "#fff" }}
+                >
+                  {excelLoading ? "Evaluando..." : "Evaluar Escenario"}
+                </button>
+              </div>
+
+              {/* Error */}
+              {excelError && (
+                <div className="rounded-lg p-3 text-sm" style={{ background: "var(--negative-bg, #fef2f2)", color: "var(--negative)" }}>
+                  {excelError}
+                </div>
+              )}
+
+              {/* Results */}
+              {excelResult && (
+                <div className="space-y-4">
+                  <div className="rounded-lg p-3" style={{ background: "var(--bg-tertiary)" }}>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                      Escenario &quot;{String((excelResult.scenario as Record<string, unknown>)?.name || "")}&quot; creado
+                    </p>
+                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                      {String(excelResult.parsed_rows)} filas procesadas
+                      {(excelResult.errors as string[])?.length > 0 && ` | ${(excelResult.errors as string[]).length} errores`}
+                    </p>
+                  </div>
+
+                  {/* Suggestions */}
+                  {(excelResult.suggestions as Array<Record<string, unknown>>)?.length > 0 && (
+                    <div>
+                      <h4 className="mb-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                        Sugerencias de Mejora ({(excelResult.suggestions as Array<unknown>).length})
+                      </h4>
+                      <div className="max-h-[300px] overflow-auto">
+                        <table className="w-full text-sm">
+                          <thead className="sticky top-0" style={{ background: "var(--table-header-bg)" }}>
+                            <tr style={{ borderBottom: "1px solid var(--border-primary)" }}>
+                              <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Producto</th>
+                              <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Plan</th>
+                              <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Sugerido</th>
+                              <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Delta Margen</th>
+                              <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Delta Ingreso</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(excelResult.suggestions as Array<Record<string, unknown>>).map((s, i) => (
+                              <tr key={i} style={{ borderBottom: "1px solid var(--border-secondary)" }}>
+                                <td className="py-2" style={{ color: "var(--text-primary)" }}>{String(s.product_name || `Product #${s.product_id}`)}</td>
+                                <td className="py-2 font-mono" style={{ color: "var(--text-secondary)" }}>{Number(s.planned_pct) > 0 ? "+" : ""}{String(s.planned_pct)}%</td>
+                                <td className="py-2 font-mono font-bold" style={{ color: "var(--usg-red)" }}>{Number(s.suggested_pct) > 0 ? "+" : ""}{String(s.suggested_pct)}%</td>
+                                <td className="py-2 font-mono" style={{ color: Number(s.delta_margin) >= 0 ? "var(--positive)" : "var(--negative)" }}>{formatCurrency(Number(s.delta_margin))}</td>
+                                <td className="py-2 font-mono" style={{ color: Number(s.delta_revenue) >= 0 ? "var(--positive)" : "var(--negative)" }}>{formatCurrency(Number(s.delta_revenue))}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {(excelResult.suggestions as Array<unknown>)?.length === 0 && (
+                    <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+                      Tu plan de precios ya esta optimizado - no hay sugerencias de mejora.
+                    </p>
+                  )}
+
+                  {/* Errors from parsing */}
+                  {(excelResult.errors as string[])?.length > 0 && (
+                    <div className="rounded-lg p-3" style={{ background: "var(--bg-tertiary)" }}>
+                      <h4 className="text-xs font-semibold mb-1" style={{ color: "var(--text-tertiary)" }}>Advertencias del parsing:</h4>
+                      {(excelResult.errors as string[]).map((e, i) => (
+                        <p key={i} className="text-xs" style={{ color: "var(--text-tertiary)" }}>{e}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ================================================================= */}
+      {/* TAB: Optimizar                                                     */}
+      {/* ================================================================= */}
+      {mainTab === "optimize" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Optimización Automática de Precios</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+                El sistema encuentra el precio óptimo para cada producto según el objetivo seleccionado, usando las elasticidades calculadas.
+              </p>
+
+              {/* Config */}
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>Nombre del escenario</label>
+                  <input
+                    type="text"
+                    placeholder="Optimización..."
+                    value={optName}
+                    onChange={(e) => setOptName(e.target.value)}
+                    className="rounded-lg border px-3 py-2 text-sm"
+                    style={{ background: "var(--input-bg)", borderColor: "var(--input-border)", color: "var(--text-primary)" }}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>Objetivo</label>
+                  <div className="flex gap-1">
+                    {(["margin", "revenue", "volume"] as const).map((obj) => (
+                      <button
+                        key={obj}
+                        onClick={() => setOptObjective(obj)}
+                        className="flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors"
+                        style={{
+                          background: optObjective === obj ? "var(--usg-red)" : "var(--bg-tertiary)",
+                          color: optObjective === obj ? "#fff" : "var(--text-secondary)",
+                        }}
+                      >
+                        {obj === "margin" ? "Margen" : obj === "revenue" ? "Ingreso" : "Volumen"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>Precio mín %</label>
+                  <input
+                    type="number"
+                    value={optMinPct}
+                    onChange={(e) => setOptMinPct(Number(e.target.value))}
+                    className="rounded-lg border px-3 py-2 text-sm"
+                    style={{ background: "var(--input-bg)", borderColor: "var(--input-border)", color: "var(--text-primary)" }}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>Precio máx %</label>
+                  <input
+                    type="number"
+                    value={optMaxPct}
+                    onChange={(e) => setOptMaxPct(Number(e.target.value))}
+                    className="rounded-lg border px-3 py-2 text-sm"
+                    style={{ background: "var(--input-bg)", borderColor: "var(--input-border)", color: "var(--text-primary)" }}
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                Los filtros globales (segmento, territorio, categoría, distribuidor) se aplican al alcance de la optimización.
+              </p>
+
+              <button
+                disabled={!optName || optLoading}
+                onClick={async () => {
+                  setOptLoading(true);
+                  setOptError("");
+                  setOptResult(null);
+                  try {
+                    const result = await createOptimizedScenario({
+                      name: optName,
+                      objective: optObjective,
+                      price_min_pct: optMinPct,
+                      price_max_pct: optMaxPct,
+                      segment: params.segment,
+                      territory_id: params.territory_id,
+                      customer_id: params.customer_id,
+                      category_id: params.category_id,
+                    });
+                    setOptResult(result as unknown as Record<string, unknown>);
+                    queryClient.invalidateQueries({ queryKey: ["scenarios"] });
+                  } catch (err) {
+                    setOptError(err instanceof Error ? err.message : "Error optimizing");
+                  } finally {
+                    setOptLoading(false);
+                  }
+                }}
+                className="w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+                style={{ background: "var(--usg-red)", color: "#fff" }}
+              >
+                {optLoading ? "Optimizando..." : "Optimizar Precios"}
+              </button>
+
+              {/* Error */}
+              {optError && (
+                <div className="rounded-lg p-3 text-sm" style={{ background: "var(--negative-bg, #fef2f2)", color: "var(--negative)" }}>
+                  {optError}
+                </div>
+              )}
+
+              {/* Results */}
+              {optResult && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="rounded-lg p-3" style={{ background: "var(--bg-tertiary)" }}>
+                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Productos Optimizados</p>
+                      <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{String(optResult.products_optimized)}</p>
+                    </div>
+                    <div className="rounded-lg p-3" style={{ background: "var(--bg-tertiary)" }}>
+                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Objetivo</p>
+                      <p className="text-lg font-bold" style={{ color: "var(--usg-red)" }}>
+                        {optResult.objective === "margin" ? "Margen" : optResult.objective === "revenue" ? "Ingreso" : "Volumen"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg p-3" style={{ background: "var(--bg-tertiary)" }}>
+                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Rango de Precio</p>
+                      <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+                        {(optResult.price_range as number[])?.[0]}% a {(optResult.price_range as number[])?.[1]}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="max-h-[400px] overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0" style={{ background: "var(--table-header-bg)" }}>
+                        <tr style={{ borderBottom: "1px solid var(--border-primary)" }}>
+                          <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Producto</th>
+                          <th className="pb-2 text-right text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Cambio Óptimo</th>
+                          <th className="pb-2 text-right text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Valor Óptimo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(optResult.optimization_details as Array<Record<string, unknown>>)?.map((d, i) => (
+                          <tr key={i} style={{ borderBottom: "1px solid var(--border-secondary)" }}>
+                            <td className="py-2" style={{ color: "var(--text-primary)" }}>Product #{String(d.product_id)}</td>
+                            <td className="py-2 text-right font-mono font-bold" style={{ color: Number(d.optimal_change_pct) >= 0 ? "var(--positive)" : "var(--negative)" }}>
+                              {Number(d.optimal_change_pct) > 0 ? "+" : ""}{String(d.optimal_change_pct)}%
+                            </td>
+                            <td className="py-2 text-right font-mono" style={{ color: "var(--text-secondary)" }}>
+                              {formatCurrency(Number(d.optimal_value))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                    Escenario guardado. Puedes verlo en la pestaña &quot;Simular&quot; → Escenarios Guardados, o compararlo en &quot;Comparar&quot;.
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

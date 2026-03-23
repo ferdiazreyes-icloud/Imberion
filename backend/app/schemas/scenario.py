@@ -127,3 +127,38 @@ class BestScenarioResponse(BaseModel):
     objective: str
     best: ScenarioCompareItem
     runners_up: List[ScenarioCompareItem]
+
+
+# ---------------------------------------------------------------------------
+# Excel upload & optimization schemas
+# ---------------------------------------------------------------------------
+
+class OptimizeRequest(BaseModel):
+    name: str
+    objective: str  # "margin", "revenue", "volume"
+    price_min_pct: float = -10.0
+    price_max_pct: float = 15.0
+    segment: Optional[str] = None
+    territory_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    category_id: Optional[str] = None
+
+
+class SuggestionItem(BaseModel):
+    product_id: int
+    product_name: Optional[str] = None
+    planned_pct: float
+    suggested_pct: float
+    planned_margin: float
+    suggested_margin: float
+    delta_margin: float
+    planned_revenue: float
+    suggested_revenue: float
+    delta_revenue: float
+    reason: str
+
+
+class ExcelScenarioResponse(BaseModel):
+    scenario: ScenarioOut
+    parsed_rows: int
+    suggestions: List[SuggestionItem]

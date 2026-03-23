@@ -91,3 +91,37 @@ export const getExportCSVUrl = (params?: Record<string, string>) =>
 export const getExportScenarioCSVUrl = (scenarioId: number) =>
   `${API_URL}/api/export/scenario-csv/${scenarioId}`;
 export const getExecutiveSummary = () => fetchAPI<Record<string, unknown>>("/api/export/executive-summary");
+
+// Excel scenarios & Optimization
+export const getScenarioTemplateUrl = () => `${API_URL}/api/simulator/template-excel`;
+
+export const uploadScenarioExcel = async (file: File, name: string, objective: string = "margin") => {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("name", name);
+  form.append("objective", objective);
+  const res = await fetch(`${API_URL}/api/simulator/scenarios/from-excel`, { method: "POST", body: form });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
+  return res.json();
+};
+
+export const createOptimizedScenario = (data: {
+  name: string;
+  objective: string;
+  price_min_pct: number;
+  price_max_pct: number;
+  segment?: string;
+  territory_id?: string;
+  customer_id?: string;
+  category_id?: string;
+}) =>
+  fetchAPI<{
+    scenario: { id: number; name: string };
+    products_optimized: number;
+    objective: string;
+    price_range: number[];
+    optimization_details: Array<{ product_id: number; optimal_change_pct: number; optimal_value: number }>;
+  }>("/api/simulator/scenarios/optimize", { method: "POST", body: JSON.stringify(data) });

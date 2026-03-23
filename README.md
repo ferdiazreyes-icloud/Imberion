@@ -4,7 +4,7 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 
 ## Estado Actual
 
-- [x] Backend (FastAPI) — 24 endpoints, 31 unit tests passing
+- [x] Backend (FastAPI) — 27 endpoints, 38 unit tests passing
 - [x] Frontend (Next.js) — 5 módulos con datos en vivo
 - [x] Motor de elasticidades (log-log regression con scipy)
 - [x] Generador de datos mock (86 SKUs, 75 distribuidores reales, 29 territorios, 24 meses)
@@ -19,6 +19,8 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 - [x] Confianza movida a módulo Historial exclusivamente
 - [x] Export CSV de escenarios en simulador
 - [x] Soporte multi-filtro — todos los filtros aceptan selección múltiple con valores separados por coma
+- [x] Escenarios por carga de Excel — upload de plan de precios, evaluación con elasticidades, sugerencias de mejora
+- [x] Optimización automática — maximizar margen/ingreso/volumen con rango de precio definido por el usuario
 
 ## URLs de Producción
 
@@ -34,7 +36,7 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 |--------|------|-------------|
 | Overview | `/` | Dashboard con 6 KPIs y drill-down por categoría, segmento y territorio |
 | Historial | `/history` | Elasticidades históricas, tendencias precio-volumen, scatter plot, filtro de confianza |
-| Simulador | `/simulator` | Simulador de escenarios con drill-down, comparación multi-escenario, mejor escenario, export CSV |
+| Simulador | `/simulator` | 5 tabs: Simular (manual), Comparar, Mejor Escenario, Cargar Excel, Optimizar |
 | Recomendaciones | `/recommendations` | Recomendaciones por segmento/territorio/SKU con export CSV |
 | Passthrough | `/passthrough` | Análisis de rebates, descuentos y precio neto |
 
@@ -81,7 +83,7 @@ npm run dev
 
 ## Tests
 
-### Backend (unit tests) — 31/31
+### Backend (unit tests) — 38/38
 
 ```bash
 cd backend
@@ -161,6 +163,9 @@ BASE_URL=http://localhost:3000 npx playwright test
 | GET | `/api/passthrough/by-category` | Passthrough por categoría |
 | GET | `/api/passthrough/trends` | Tendencias de componentes |
 | GET | `/api/export/recommendations-csv` | Exportar CSV |
+| GET | `/api/simulator/template-excel` | Descargar plantilla Excel para escenarios |
+| POST | `/api/simulator/scenarios/from-excel` | Crear escenario desde Excel + sugerencias |
+| POST | `/api/simulator/scenarios/optimize` | Crear escenario con optimización automática |
 | GET | `/api/export/scenario-csv/{id}` | Exportar resultados de escenario a CSV |
 | GET | `/api/export/executive-summary` | Informe ejecutivo JSON |
 | POST | `/api/admin/seed` | Poblar BD con datos mock |
@@ -184,6 +189,6 @@ Todos los GET endpoints aceptan estos query params opcionales:
 | # | Feature | Estado |
 |---|---------|--------|
 | 5 | Módulo de Rebates óptimos por distribuidor | Pendiente — validar con cliente |
-| 6b | Escenarios por carga de Excel (plan de precios) | Pendiente |
-| 6c | Escenarios por optimización automática (maximizar objetivo) | Pendiente |
+| 6b | ~~Escenarios por carga de Excel (plan de precios)~~ | Completado |
+| 6c | ~~Escenarios por optimización automática (maximizar objetivo)~~ | Completado |
 | 7 | Agente AI conversacional para consultar datos | Pendiente |
