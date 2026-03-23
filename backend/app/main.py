@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import Base, engine, get_db
 from app.api import overview, history, simulator, recommendations, passthrough, export
-from app.models import Territory, Category, Customer
+from app.models import Territory, Category, Customer, Branch
 
 
 @asynccontextmanager
@@ -78,7 +78,9 @@ def get_customers(
         q = q.filter(Customer.segment.in_(segments)) if len(segments) > 1 else q.filter(Customer.segment == segments[0])
     if territory_id:
         tids = [int(t) for t in territory_id.split(",") if t.strip()]
-        q = q.filter(Customer.territory_id.in_(tids)) if len(tids) > 1 else q.filter(Customer.territory_id == tids[0])
+        states = [r.state for r in db.query(Territory.state).filter(Territory.id.in_(tids)).all()]
+        if states:
+            q = q.join(Branch).filter(Branch.state.in_(states)).distinct()
     customers = q.all()
     return [{"id": c.id, "name": c.name, "segment": c.segment} for c in customers]
 
