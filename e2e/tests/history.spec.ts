@@ -32,11 +32,20 @@ test.describe("Historial / Elasticidades", () => {
 
   test("analysis level selector works", async ({ page }) => {
     await page.goto("/history");
-    // Find the "Nivel de analisis" select and change it
-    const analysisSelect = page.locator("select").nth(4); // After the 4 global filter selects
-    await expect(analysisSelect).toBeVisible();
+    // "Nivel de análisis" is now the first native <select> (global filters are ComboBoxes)
+    const analysisSelect = page.locator("select").first();
+    await expect(analysisSelect).toBeVisible({ timeout: 10000 });
     await analysisSelect.selectOption("sku");
     // Page should still render
+    await expect(page.locator("text=Elasticidades Historicas")).toBeVisible({ timeout: 10000 });
+  });
+
+  test("confidence filter is present in history", async ({ page }) => {
+    await page.goto("/history");
+    // Confidence filter is the second native <select> on history page
+    const confidenceSelect = page.locator("select").nth(1);
+    await expect(confidenceSelect).toBeVisible({ timeout: 10000 });
+    await confidenceSelect.selectOption("high");
     await expect(page.locator("text=Elasticidades Historicas")).toBeVisible({ timeout: 10000 });
   });
 });

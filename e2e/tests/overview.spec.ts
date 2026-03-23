@@ -26,20 +26,32 @@ test.describe("Overview / Dashboard", () => {
 
   test("global filters are present", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("Segmento", { exact: true })).toBeVisible();
+    await expect(page.getByText("Segmento", { exact: true })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("Territorio", { exact: true })).toBeVisible();
-    await expect(page.getByText("Categoria", { exact: true })).toBeVisible();
-    await expect(page.locator("text=Confianza")).toBeVisible();
+    await expect(page.getByText("Categoría", { exact: true })).toBeVisible();
+    await expect(page.getByText("Distribuidor", { exact: true })).toBeVisible();
     await expect(page.locator("text=Limpiar filtros")).toBeVisible();
   });
 
-  test("segment filter changes data", async ({ page }) => {
+  test("segment filter combobox works", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("text=Ingreso Total")).toBeVisible({ timeout: 15000 });
 
-    // Select "Oro" segment
-    const segmentSelect = page.locator("select").first();
-    await segmentSelect.selectOption("oro");
+    // Click on the Segmento combobox to open it
+    const segmentoLabel = page.getByText("Segmento", { exact: true });
+    await expect(segmentoLabel).toBeVisible();
+
+    // Click the combobox input area (sibling of the label)
+    const segmentoBox = segmentoLabel.locator("..").locator("div").first();
+    await segmentoBox.click();
+
+    // The dropdown should show options
+    await expect(page.locator("text=Oro")).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("text=Plata")).toBeVisible();
+    await expect(page.locator("text=Bronce")).toBeVisible();
+
+    // Click "Oro" to select it
+    await page.locator("text=Oro").click();
 
     // Data should still load (KPIs remain visible)
     await expect(page.locator("text=Ingreso Total")).toBeVisible({ timeout: 10000 });

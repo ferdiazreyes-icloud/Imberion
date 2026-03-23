@@ -65,4 +65,41 @@ test.describe("Simulador de Precios", () => {
 
     await page.screenshot({ path: "screenshots/simulator-06-sections.png", fullPage: true });
   });
+
+  test("all 5 tabs are visible", async ({ page }) => {
+    await page.goto("/simulator");
+    await expect(page.locator("text=Simular")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=Comparar")).toBeVisible();
+    await expect(page.locator("text=Mejor Escenario")).toBeVisible();
+    await expect(page.locator("text=Cargar Excel")).toBeVisible();
+    await expect(page.locator("text=Optimizar")).toBeVisible();
+  });
+
+  test("Cargar Excel tab renders with template download", async ({ page }) => {
+    await page.goto("/simulator");
+    // Click "Cargar Excel" tab
+    await page.locator("button:has-text('Cargar Excel')").click();
+
+    // Should see the excel upload UI
+    await expect(page.locator("text=Cargar Escenario desde Excel")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=Descargar Plantilla Excel")).toBeVisible();
+    await expect(page.locator("text=Evaluar Escenario")).toBeVisible();
+
+    await page.screenshot({ path: "screenshots/simulator-07-excel-tab.png", fullPage: true });
+  });
+
+  test("Optimizar tab renders with objective buttons", async ({ page }) => {
+    await page.goto("/simulator");
+    // Click "Optimizar" tab
+    await page.locator("button:has-text('Optimizar')").click();
+
+    // Should see optimization UI
+    await expect(page.locator("text=Optimización Automática de Precios")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("button:has-text('Margen')")).toBeVisible();
+    await expect(page.locator("button:has-text('Ingreso')")).toBeVisible();
+    await expect(page.locator("button:has-text('Volumen')")).toBeVisible();
+    await expect(page.locator("text=Optimizar Precios")).toBeVisible();
+
+    await page.screenshot({ path: "screenshots/simulator-08-optimize-tab.png", fullPage: true });
+  });
 });
