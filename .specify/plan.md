@@ -44,17 +44,19 @@ All endpoints under `/api/` prefix with OpenAPI auto-documentation at `/docs`.
 - Backend: 23 endpoints, 21 unit tests passing (pytest + SQLite in-memory)
 - Frontend: builds successfully, deployed with standalone output
 - E2E tests: Playwright tests covering all 5 modules against production
-- Mock data: 86 SKUs, 25 distributors, 10 territories, 24 months of transactions seeded
+- Mock data: 86 SKUs, 75 real distributors, 29 territories, 24 months of transactions seeded
 - Auto table creation on startup + `/api/admin/seed` endpoint for remote seeding
 - Visual refinement v2: USG brand colors (#A6192E), Inter font, Tableau chart palette, dark/light mode, animations
 - Simulator quick-simulate fixed: POST→GET method alignment, safe fallback for empty data
 - Analytics engine integrated: `predict_scenario()` and `confidence_scorer()` connected to simulator endpoints
 - Enhanced simulator: drill-down, multi-scenario comparison, best scenario recommendation
-- ComboBox searchable dropdowns for territory, category, and distributor filters
+- Multi-select ComboBox with portal dropdown for all filters (segment, territory, category, distributor)
 - 75 real distributors with state-level branch mapping (from Excel)
-- customer_id filter on all transaction-based endpoints
+- Distributor filter cascades from territory selection (via Branch.state join)
+- customer_id, territory_id, category_id, segment all support comma-separated multi-values
 - Confidence filter moved to History module only
 - Scenario CSV export endpoint + button in simulator UI
+- 31 backend unit tests passing
 
 ## Pending Improvements
 

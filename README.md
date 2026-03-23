@@ -4,7 +4,7 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 
 ## Estado Actual
 
-- [x] Backend (FastAPI) — 24 endpoints, 29 unit tests passing
+- [x] Backend (FastAPI) — 24 endpoints, 31 unit tests passing
 - [x] Frontend (Next.js) — 5 módulos con datos en vivo
 - [x] Motor de elasticidades (log-log regression con scipy)
 - [x] Generador de datos mock (86 SKUs, 75 distribuidores reales, 29 territorios, 24 meses)
@@ -14,10 +14,11 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 - [x] Integración del módulo analytics avanzado (predict_scenario + confidence_scorer) con API
 - [x] Visual refinement v2 — USG brand colors, Inter font, Tableau charts, dark mode, animations
 - [x] Simulador potenciado — drill-down, comparación multi-escenario, mejor escenario por objetivo
-- [x] Filtros ComboBox con búsqueda — territorio, categoría y distribuidor con type-ahead
-- [x] Selector de distribuidor — 75 distribuidores reales con filtro por segmento
+- [x] Filtros ComboBox multi-select con búsqueda — segmento, territorio, categoría y distribuidor
+- [x] Selector de distribuidor — 75 distribuidores reales filtrados por territorio (via sucursales) y segmento
 - [x] Confianza movida a módulo Historial exclusivamente
 - [x] Export CSV de escenarios en simulador
+- [x] Soporte multi-filtro — todos los filtros aceptan selección múltiple con valores separados por coma
 
 ## URLs de Producción
 
@@ -80,7 +81,7 @@ npm run dev
 
 ## Tests
 
-### Backend (unit tests) — 29/29
+### Backend (unit tests) — 31/31
 
 ```bash
 cd backend
