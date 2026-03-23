@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Transaction, Customer, Product, Territory, Category, Elasticity
 from app.schemas.analytics import ElasticityOut, TrendPoint, TrendResponse
+from app.api.overview import _parse_ids, _filter_ids
 
 router = APIRouter()
 
@@ -36,8 +37,8 @@ def get_trends(
     node_type: str = "category",
     node_id: Optional[int] = None,
     segment: Optional[str] = None,
-    territory_id: Optional[int] = None,
-    customer_id: Optional[int] = None,
+    territory_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -62,12 +63,10 @@ def get_trends(
     else:
         label_q = "Portafolio Total"
 
-    if customer_id:
-        q = q.filter(Transaction.customer_id == customer_id)
+    q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     if segment:
         q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
-    if territory_id:
-        q = q.filter(Transaction.territory_id == territory_id)
+    q = _filter_ids(q, Transaction.territory_id, _parse_ids(territory_id))
 
     rows = q.group_by("year", "month").order_by("year", "month").all()
 
@@ -94,9 +93,9 @@ def get_trends(
 @router.get("/history/price-volume")
 def get_price_volume_scatter(
     product_id: Optional[int] = None,
-    category_id: Optional[int] = None,
+    category_id: Optional[str] = None,
     segment: Optional[str] = None,
-    customer_id: Optional[int] = None,
+    customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     """Return monthly price-volume pairs for scatter/elasticity chart."""
@@ -109,10 +108,10 @@ def get_price_volume_scatter(
 
     if product_id:
         q = q.filter(Transaction.product_id == product_id)
-    if category_id:
-        q = q.join(Product).filter(Product.category_id == category_id)
-    if customer_id:
-        q = q.filter(Transaction.customer_id == customer_id)
+    cat_ids = _parse_ids(category_id)
+    if cat_ids:
+        q = q.join(Product).filter(Product.category_id.in_(cat_ids) if len(cat_ids) > 1 else Product.category_id == cat_ids[0])
+    q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     if segment:
         q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
 

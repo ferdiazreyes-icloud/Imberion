@@ -256,13 +256,16 @@ def compare_scenarios(scenario_id: int, db: Session = Depends(get_db)):
 @router.get("/simulator/quick-simulate")
 def quick_simulate(
     product_id: Optional[int] = None,
-    category_id: Optional[int] = None,
+    category_id: Optional[str] = None,
     segment: Optional[str] = None,
-    customer_id: Optional[int] = None,
+    customer_id: Optional[str] = None,
     price_change_pct: float = 5.0,
     db: Session = Depends(get_db),
 ):
     """Quick simulation without persisting. Returns price-volume-margin curve."""
+    from app.api.overview import _parse_ids, _filter_ids
+
+    cat_ids = _parse_ids(category_id)
     # Fetch elasticity and base data ONCE outside the loop
     if product_id:
         elast = db.query(Elasticity).filter(
@@ -271,21 +274,20 @@ def quick_simulate(
         base_q = db.query(
             func.avg(Transaction.net_price), func.sum(Transaction.volume), func.sum(Transaction.revenue)
         ).filter(Transaction.product_id == product_id)
-    elif category_id:
+    elif cat_ids:
         elast = db.query(Elasticity).filter(
-            Elasticity.node_type == "category", Elasticity.node_id == category_id
+            Elasticity.node_type == "category", Elasticity.node_id == cat_ids[0]
         ).first()
         base_q = db.query(
             func.avg(Transaction.net_price), func.sum(Transaction.volume), func.sum(Transaction.revenue)
-        ).join(Product).filter(Product.category_id == category_id)
+        ).join(Product).filter(Product.category_id.in_(cat_ids) if len(cat_ids) > 1 else Product.category_id == cat_ids[0])
     else:
         elast = db.query(Elasticity).filter(Elasticity.node_type == "category").first()
         base_q = db.query(
             func.avg(Transaction.net_price), func.sum(Transaction.volume), func.sum(Transaction.revenue)
         )
 
-    if customer_id:
-        base_q = base_q.filter(Transaction.customer_id == customer_id)
+    base_q = _filter_ids(base_q, Transaction.customer_id, _parse_ids(customer_id))
     if segment:
         base_q = base_q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
 

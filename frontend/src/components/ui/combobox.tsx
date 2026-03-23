@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 
 interface ComboBoxProps {
   label?: string;
   options: { value: string; label: string }[];
-  value: string;
+  value: string; // comma-separated values, e.g. "1,5,12"
   onChange: (value: string) => void;
   placeholder?: string;
 }
@@ -13,78 +14,222 @@ interface ComboBoxProps {
 export function ComboBox({ label, options, value, onChange, placeholder = "Todos" }: ComboBoxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const selectedLabel = options.find((o) => o.value === value)?.label || "";
+  // Parse comma-separated value into array
+  const selected = value ? value.split(",").filter(Boolean) : [];
 
-  const filtered = search
-    ? options.filter((o) => o.label.toLowerCase().includes(search.toLowerCase()))
-    : options;
+  const selectedLabels = selected
+    .map((v) => options.find((o) => o.value === v))
+    .filter(Boolean) as { value: string; label: string }[];
+
+  const filtered = options.filter((o) => {
+    const matchesSearch = !search || o.label.toLowerCase().includes(search.toLowerCase());
+    return matchesSearch;
+  });
+
+  // Update dropdown position relative to trigger
+  const updatePosition = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPos({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, []);
 
   useEffect(() => {
+    if (open) {
+      updatePosition();
+      window.addEventListener("scroll", updatePosition, true);
+      window.addEventListener("resize", updatePosition);
+      return () => {
+        window.removeEventListener("scroll", updatePosition, true);
+        window.removeEventListener("resize", updatePosition);
+      };
+    }
+  }, [open, updatePosition]);
+
+  // Close on click outside
+  useEffect(() => {
+    if (!open) return;
     function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        triggerRef.current && !triggerRef.current.contains(target) &&
+        dropdownRef.current && !dropdownRef.current.contains(target)
+      ) {
         setOpen(false);
         setSearch("");
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [open]);
 
-  function handleSelect(val: string) {
-    onChange(val);
+  function toggleOption(val: string) {
+    if (selected.includes(val)) {
+      const next = selected.filter((v) => v !== val);
+      onChange(next.join(","));
+    } else {
+      onChange([...selected, val].join(","));
+    }
+  }
+
+  function removeOption(val: string) {
+    const next = selected.filter((v) => v !== val);
+    onChange(next.join(","));
+  }
+
+  function clearAll() {
+    onChange("");
     setOpen(false);
     setSearch("");
   }
 
+  const dropdown = open ? createPortal(
+    <div
+      ref={dropdownRef}
+      className="fixed max-h-60 overflow-auto rounded-lg border shadow-lg"
+      style={{
+        top: pos.top,
+        left: pos.left,
+        width: pos.width,
+        zIndex: 9999,
+        background: "var(--bg-primary)",
+        borderColor: "var(--border-primary)",
+      }}
+    >
+      {/* Clear all / Todos option */}
+      <div
+        className="cursor-pointer px-3 py-2 text-sm transition-colors hover:opacity-80"
+        style={{ color: "var(--text-tertiary)" }}
+        onClick={clearAll}
+      >
+        {placeholder} (limpiar)
+      </div>
+      {filtered.length === 0 ? (
+        <div className="px-3 py-2 text-sm" style={{ color: "var(--text-tertiary)" }}>
+          Sin resultados
+        </div>
+      ) : (
+        filtered.map((o) => {
+          const isSelected = selected.includes(o.value);
+          return (
+            <div
+              key={o.value}
+              className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm transition-colors hover:opacity-80"
+              style={{
+                color: "var(--text-primary)",
+                background: isSelected ? "var(--bg-tertiary)" : "transparent",
+              }}
+              onClick={() => toggleOption(o.value)}
+            >
+              <span
+                className="flex h-4 w-4 shrink-0 items-center justify-center rounded border text-xs"
+                style={{
+                  borderColor: isSelected ? "var(--usg-red)" : "var(--input-border)",
+                  background: isSelected ? "var(--usg-red)" : "transparent",
+                  color: isSelected ? "#fff" : "transparent",
+                }}
+              >
+                {isSelected ? "\u2713" : ""}
+              </span>
+              {o.label}
+            </div>
+          );
+        })
+      )}
+    </div>,
+    document.body,
+  ) : null;
+
   return (
-    <div className="relative flex flex-col gap-1" ref={ref}>
+    <div className="flex flex-col gap-1" style={{ minWidth: 160 }}>
       {label && (
         <label className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>
           {label}
         </label>
       )}
       <div
-        className="flex items-center rounded-lg border transition-colors cursor-pointer"
+        ref={triggerRef}
+        className="flex flex-wrap items-center gap-1 rounded-lg border px-2 py-1.5 transition-colors cursor-pointer"
         style={{
           background: "var(--input-bg)",
           borderColor: open ? "var(--accent-primary)" : "var(--input-border)",
+          minHeight: 38,
         }}
         onClick={() => {
           setOpen(true);
+          updatePosition();
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
       >
+        {/* Selected chips */}
+        {selectedLabels.map((item) => (
+          <span
+            key={item.value}
+            className="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium"
+            style={{
+              background: "var(--bg-tertiary)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border-primary)",
+            }}
+          >
+            {item.label.length > 20 ? item.label.slice(0, 20) + "..." : item.label}
+            <button
+              className="ml-0.5 hover:opacity-70"
+              style={{ color: "var(--text-tertiary)" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                removeOption(item.value);
+              }}
+            >
+              x
+            </button>
+          </span>
+        ))}
+        {/* Search input */}
         <input
           ref={inputRef}
           type="text"
-          className="w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none"
+          className="min-w-[60px] flex-1 bg-transparent text-sm outline-none"
           style={{ color: "var(--text-primary)" }}
-          placeholder={value ? selectedLabel : placeholder}
-          value={open ? search : selectedLabel}
+          placeholder={selected.length === 0 ? placeholder : "Buscar..."}
+          value={search}
           onChange={(e) => {
             setSearch(e.target.value);
-            if (!open) setOpen(true);
+            if (!open) {
+              setOpen(true);
+              updatePosition();
+            }
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true);
+            updatePosition();
+          }}
         />
-        {value && (
+        {/* Clear all button */}
+        {selected.length > 0 && (
           <button
-            className="mr-1 rounded px-1 text-xs hover:opacity-70"
+            className="shrink-0 rounded px-1 text-xs hover:opacity-70"
             style={{ color: "var(--text-tertiary)" }}
             onClick={(e) => {
               e.stopPropagation();
-              handleSelect("");
+              clearAll();
             }}
-            title="Limpiar"
+            title="Limpiar todo"
           >
-            ✕
+            x
           </button>
         )}
         <svg
-          className="mr-2 shrink-0"
+          className="shrink-0"
           width="12"
           height="12"
           viewBox="0 0 12 12"
@@ -93,42 +238,7 @@ export function ComboBox({ label, options, value, onChange, placeholder = "Todos
           <path d="M3 5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
       </div>
-      {open && (
-        <div
-          className="absolute top-full left-0 z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border shadow-lg"
-          style={{
-            background: "var(--bg-primary)",
-            borderColor: "var(--border-primary)",
-          }}
-        >
-          <div
-            className="cursor-pointer px-3 py-2 text-sm transition-colors hover:opacity-80"
-            style={{ color: "var(--text-tertiary)" }}
-            onClick={() => handleSelect("")}
-          >
-            {placeholder}
-          </div>
-          {filtered.length === 0 ? (
-            <div className="px-3 py-2 text-sm" style={{ color: "var(--text-tertiary)" }}>
-              Sin resultados
-            </div>
-          ) : (
-            filtered.map((o) => (
-              <div
-                key={o.value}
-                className="cursor-pointer px-3 py-2 text-sm transition-colors hover:opacity-80"
-                style={{
-                  color: "var(--text-primary)",
-                  background: o.value === value ? "var(--bg-tertiary)" : "transparent",
-                }}
-                onClick={() => handleSelect(o.value)}
-              >
-                {o.label}
-              </div>
-            ))
-          )}
-        </div>
-      )}
+      {dropdown}
     </div>
   );
 }

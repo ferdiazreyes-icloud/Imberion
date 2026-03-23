@@ -11,13 +11,29 @@ from app.schemas.analytics import KPI, OverviewResponse
 router = APIRouter()
 
 
+def _parse_ids(val: Optional[str]) -> Optional[list]:
+    """Parse comma-separated IDs string into list of ints."""
+    if not val:
+        return None
+    return [int(x) for x in val.split(",") if x.strip()]
+
+
+def _filter_ids(q, column, ids: Optional[list]):
+    """Apply single or multi-ID filter to a query."""
+    if not ids:
+        return q
+    if len(ids) == 1:
+        return q.filter(column == ids[0])
+    return q.filter(column.in_(ids))
+
+
 @router.get("/overview", response_model=OverviewResponse)
 def get_overview(
     segment: Optional[str] = None,
-    territory_id: Optional[int] = None,
+    territory_id: Optional[str] = None,
     region: Optional[str] = None,
-    category_id: Optional[int] = None,
-    customer_id: Optional[int] = None,
+    category_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
     period_start: Optional[str] = None,
     period_end: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -32,16 +48,15 @@ def get_overview(
         func.count(distinct(Transaction.territory_id)).label("n_territories"),
     )
 
-    if customer_id:
-        q = q.filter(Transaction.customer_id == customer_id)
+    q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     if segment:
         q = q.join(Customer).filter(Customer.segment == segment)
-    if territory_id:
-        q = q.filter(Transaction.territory_id == territory_id)
+    q = _filter_ids(q, Transaction.territory_id, _parse_ids(territory_id))
     if region:
         q = q.join(Territory).filter(Territory.region == region)
-    if category_id:
-        q = q.join(Product).filter(Product.category_id == category_id)
+    cat_ids = _parse_ids(category_id)
+    if cat_ids:
+        q = q.join(Product).filter(Product.category_id.in_(cat_ids) if len(cat_ids) > 1 else Product.category_id == cat_ids[0])
     if period_start:
         q = q.filter(Transaction.date >= period_start)
     if period_end:
@@ -76,8 +91,8 @@ def get_overview(
 @router.get("/overview/by-category")
 def overview_by_category(
     segment: Optional[str] = None,
-    territory_id: Optional[int] = None,
-    customer_id: Optional[int] = None,
+    territory_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     from app.models import Category
@@ -91,12 +106,10 @@ def overview_by_category(
         func.count(distinct(Transaction.product_id)).label("n_skus"),
     ).join(Product, Product.id == Transaction.product_id).join(Category, Category.id == Product.category_id)
 
-    if customer_id:
-        q = q.filter(Transaction.customer_id == customer_id)
+    q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     if segment:
         q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
-    if territory_id:
-        q = q.filter(Transaction.territory_id == territory_id)
+    q = _filter_ids(q, Transaction.territory_id, _parse_ids(territory_id))
 
     rows = q.group_by(Category.id, Category.name).all()
 
@@ -115,9 +128,9 @@ def overview_by_category(
 
 @router.get("/overview/by-segment")
 def overview_by_segment(
-    category_id: Optional[int] = None,
-    territory_id: Optional[int] = None,
-    customer_id: Optional[int] = None,
+    category_id: Optional[str] = None,
+    territory_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -129,12 +142,13 @@ def overview_by_segment(
         func.count(distinct(Transaction.customer_id)).label("n_customers"),
     ).join(Customer, Customer.id == Transaction.customer_id)
 
-    if customer_id:
-        q = q.filter(Transaction.customer_id == customer_id)
-    if category_id:
-        q = q.join(Product, Product.id == Transaction.product_id).filter(Product.category_id == category_id)
-    if territory_id:
-        q = q.filter(Transaction.territory_id == territory_id)
+    q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
+    cat_ids = _parse_ids(category_id)
+    if cat_ids:
+        q = q.join(Product, Product.id == Transaction.product_id).filter(
+            Product.category_id.in_(cat_ids) if len(cat_ids) > 1 else Product.category_id == cat_ids[0]
+        )
+    q = _filter_ids(q, Transaction.territory_id, _parse_ids(territory_id))
 
     rows = q.group_by(Customer.segment).all()
 
@@ -154,8 +168,8 @@ def overview_by_segment(
 @router.get("/overview/by-territory")
 def overview_by_territory(
     segment: Optional[str] = None,
-    category_id: Optional[int] = None,
-    customer_id: Optional[int] = None,
+    category_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -167,12 +181,14 @@ def overview_by_territory(
         func.avg(Transaction.net_price).label("avg_net_price"),
     ).join(Territory, Territory.id == Transaction.territory_id)
 
-    if customer_id:
-        q = q.filter(Transaction.customer_id == customer_id)
+    q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     if segment:
         q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
-    if category_id:
-        q = q.join(Product, Product.id == Transaction.product_id).filter(Product.category_id == category_id)
+    cat_ids = _parse_ids(category_id)
+    if cat_ids:
+        q = q.join(Product, Product.id == Transaction.product_id).filter(
+            Product.category_id.in_(cat_ids) if len(cat_ids) > 1 else Product.category_id == cat_ids[0]
+        )
 
     rows = q.group_by(Territory.id, Territory.region, Territory.state).all()
 

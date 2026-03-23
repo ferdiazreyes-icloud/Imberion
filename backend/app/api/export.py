@@ -57,17 +57,18 @@ def export_recommendations_csv(
 
 @router.get("/export/executive-summary")
 def export_executive_summary(
-    customer_id: Optional[int] = None,
+    customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     """Generate executive summary JSON."""
+    from app.api.overview import _parse_ids, _filter_ids
+
     totals_q = db.query(
         func.sum(Transaction.revenue).label("revenue"),
         func.sum(Transaction.volume).label("volume"),
         func.avg(Transaction.net_price).label("avg_price"),
     )
-    if customer_id:
-        totals_q = totals_q.filter(Transaction.customer_id == customer_id)
+    totals_q = _filter_ids(totals_q, Transaction.customer_id, _parse_ids(customer_id))
     totals = totals_q.one()
 
     by_segment = db.query(

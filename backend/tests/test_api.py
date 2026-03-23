@@ -379,3 +379,28 @@ def test_export_scenario_csv_not_found(client, db):
     _seed_basic_data(db)
     resp = client.get("/api/export/scenario-csv/9999")
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Multi-ID (comma-separated) filter tests
+# ---------------------------------------------------------------------------
+
+def test_overview_with_comma_separated_customer_ids(client, db):
+    """Comma-separated customer_id should filter to those customers."""
+    data = _seed_basic_data(db)
+    cid = data["customer"].id
+    # Single ID as string
+    resp = client.get(f"/api/overview?customer_id={cid}")
+    assert resp.status_code == 200
+    assert resp.json()["total_volume"]["value"] > 0
+    # Comma-separated with a nonexistent ID — should still return data for the valid one
+    resp2 = client.get(f"/api/overview?customer_id={cid},9999")
+    assert resp2.status_code == 200
+    assert resp2.json()["total_volume"]["value"] > 0
+
+
+def test_passthrough_with_comma_separated_territory_ids(client, db):
+    data = _seed_basic_data(db)
+    tid = data["territory"].id
+    resp = client.get(f"/api/passthrough/by-segment?territory_id={tid},9999")
+    assert resp.status_code == 200

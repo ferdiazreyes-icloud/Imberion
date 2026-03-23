@@ -6,15 +6,16 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Transaction, Customer, Product, Territory, Category
+from app.api.overview import _parse_ids, _filter_ids
 
 router = APIRouter()
 
 
 @router.get("/passthrough/by-segment")
 def passthrough_by_segment(
-    category_id: Optional[int] = None,
-    territory_id: Optional[int] = None,
-    customer_id: Optional[int] = None,
+    category_id: Optional[str] = None,
+    territory_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -27,12 +28,13 @@ def passthrough_by_segment(
         func.sum(Transaction.revenue).label("revenue"),
     ).join(Customer, Customer.id == Transaction.customer_id)
 
-    if customer_id:
-        q = q.filter(Transaction.customer_id == customer_id)
-    if category_id:
-        q = q.join(Product, Product.id == Transaction.product_id).filter(Product.category_id == category_id)
-    if territory_id:
-        q = q.filter(Transaction.territory_id == territory_id)
+    q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
+    cat_ids = _parse_ids(category_id)
+    if cat_ids:
+        q = q.join(Product, Product.id == Transaction.product_id).filter(
+            Product.category_id.in_(cat_ids) if len(cat_ids) > 1 else Product.category_id == cat_ids[0]
+        )
+    q = _filter_ids(q, Transaction.territory_id, _parse_ids(territory_id))
 
     rows = q.group_by(Customer.segment).all()
 
@@ -55,8 +57,8 @@ def passthrough_by_segment(
 @router.get("/passthrough/by-category")
 def passthrough_by_category(
     segment: Optional[str] = None,
-    territory_id: Optional[int] = None,
-    customer_id: Optional[int] = None,
+    territory_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -69,12 +71,10 @@ def passthrough_by_category(
         func.sum(Transaction.volume).label("volume"),
     ).join(Product, Product.id == Transaction.product_id).join(Category, Category.id == Product.category_id)
 
-    if customer_id:
-        q = q.filter(Transaction.customer_id == customer_id)
+    q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     if segment:
         q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
-    if territory_id:
-        q = q.filter(Transaction.territory_id == territory_id)
+    q = _filter_ids(q, Transaction.territory_id, _parse_ids(territory_id))
 
     rows = q.group_by(Category.id, Category.name).all()
 
@@ -96,8 +96,8 @@ def passthrough_by_category(
 @router.get("/passthrough/trends")
 def passthrough_trends(
     segment: Optional[str] = None,
-    category_id: Optional[int] = None,
-    customer_id: Optional[int] = None,
+    category_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     from sqlalchemy import extract
@@ -111,12 +111,14 @@ def passthrough_trends(
         func.avg(Transaction.net_price).label("avg_net_price"),
     )
 
-    if customer_id:
-        q = q.filter(Transaction.customer_id == customer_id)
+    q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     if segment:
         q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
-    if category_id:
-        q = q.join(Product, Product.id == Transaction.product_id).filter(Product.category_id == category_id)
+    cat_ids = _parse_ids(category_id)
+    if cat_ids:
+        q = q.join(Product, Product.id == Transaction.product_id).filter(
+            Product.category_id.in_(cat_ids) if len(cat_ids) > 1 else Product.category_id == cat_ids[0]
+        )
 
     rows = q.group_by("year", "month").order_by("year", "month").all()
 
