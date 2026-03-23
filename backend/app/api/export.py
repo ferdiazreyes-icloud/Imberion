@@ -4,13 +4,13 @@ import csv
 import io
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Recommendation, Product, Territory, Category, Customer, Transaction
+from app.models import Recommendation, Product, Territory, Category, Customer, Transaction, ScenarioResult, Scenario
 
 router = APIRouter()
 
@@ -56,13 +56,19 @@ def export_recommendations_csv(
 
 
 @router.get("/export/executive-summary")
-def export_executive_summary(db: Session = Depends(get_db)):
+def export_executive_summary(
+    customer_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
     """Generate executive summary JSON."""
-    totals = db.query(
+    totals_q = db.query(
         func.sum(Transaction.revenue).label("revenue"),
         func.sum(Transaction.volume).label("volume"),
         func.avg(Transaction.net_price).label("avg_price"),
-    ).one()
+    )
+    if customer_id:
+        totals_q = totals_q.filter(Transaction.customer_id == customer_id)
+    totals = totals_q.one()
 
     by_segment = db.query(
         Customer.segment,
@@ -109,3 +115,46 @@ def export_executive_summary(db: Session = Depends(get_db)):
             for r, p in top_recs
         ],
     }
+
+
+@router.get("/export/scenario-csv/{scenario_id}")
+def export_scenario_csv(
+    scenario_id: int,
+    db: Session = Depends(get_db),
+):
+    """Export scenario results as CSV."""
+    scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
+    if not scenario:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+
+    results = (
+        db.query(ScenarioResult, Product, Category)
+        .join(Product, ScenarioResult.product_id == Product.id)
+        .join(Category, Product.category_id == Category.id)
+        .filter(ScenarioResult.scenario_id == scenario_id)
+        .all()
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Product", "SKU", "Category", "Segment", "Price Change %",
+        "Expected Volume", "Expected Revenue", "Expected Margin", "Confidence",
+    ])
+
+    for sr, p, c in results:
+        writer.writerow([
+            p.name, p.sku_code, c.name, sr.segment or "",
+            sr.price_change_pct, round(sr.expected_volume, 2),
+            round(sr.expected_revenue, 2), round(sr.expected_margin, 2),
+            sr.confidence_level,
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode("utf-8")),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=scenario_{scenario_id}_{datetime.now().strftime('%Y%m%d')}.csv"
+        },
+    )

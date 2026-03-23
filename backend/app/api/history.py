@@ -37,6 +37,7 @@ def get_trends(
     node_id: Optional[int] = None,
     segment: Optional[str] = None,
     territory_id: Optional[int] = None,
+    customer_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -61,6 +62,8 @@ def get_trends(
     else:
         label_q = "Portafolio Total"
 
+    if customer_id:
+        q = q.filter(Transaction.customer_id == customer_id)
     if segment:
         q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
     if territory_id:
@@ -93,6 +96,7 @@ def get_price_volume_scatter(
     product_id: Optional[int] = None,
     category_id: Optional[int] = None,
     segment: Optional[str] = None,
+    customer_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     """Return monthly price-volume pairs for scatter/elasticity chart."""
@@ -107,6 +111,8 @@ def get_price_volume_scatter(
         q = q.filter(Transaction.product_id == product_id)
     if category_id:
         q = q.join(Product).filter(Product.category_id == category_id)
+    if customer_id:
+        q = q.filter(Transaction.customer_id == customer_id)
     if segment:
         q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
 

@@ -14,6 +14,7 @@ router = APIRouter()
 def passthrough_by_segment(
     category_id: Optional[int] = None,
     territory_id: Optional[int] = None,
+    customer_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -26,6 +27,8 @@ def passthrough_by_segment(
         func.sum(Transaction.revenue).label("revenue"),
     ).join(Customer, Customer.id == Transaction.customer_id)
 
+    if customer_id:
+        q = q.filter(Transaction.customer_id == customer_id)
     if category_id:
         q = q.join(Product, Product.id == Transaction.product_id).filter(Product.category_id == category_id)
     if territory_id:
@@ -53,6 +56,7 @@ def passthrough_by_segment(
 def passthrough_by_category(
     segment: Optional[str] = None,
     territory_id: Optional[int] = None,
+    customer_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(
@@ -65,6 +69,8 @@ def passthrough_by_category(
         func.sum(Transaction.volume).label("volume"),
     ).join(Product, Product.id == Transaction.product_id).join(Category, Category.id == Product.category_id)
 
+    if customer_id:
+        q = q.filter(Transaction.customer_id == customer_id)
     if segment:
         q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
     if territory_id:
@@ -91,6 +97,7 @@ def passthrough_by_category(
 def passthrough_trends(
     segment: Optional[str] = None,
     category_id: Optional[int] = None,
+    customer_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     from sqlalchemy import extract
@@ -104,6 +111,8 @@ def passthrough_trends(
         func.avg(Transaction.net_price).label("avg_net_price"),
     )
 
+    if customer_id:
+        q = q.filter(Transaction.customer_id == customer_id)
     if segment:
         q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
     if category_id:

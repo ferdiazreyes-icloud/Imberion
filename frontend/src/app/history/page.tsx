@@ -16,7 +16,7 @@ import { formatCurrency, formatNumber } from "@/lib/utils";
 import { CHART_COLORS, tooltipStyle, axisTickStyle, gridStyle } from "@/lib/chart-theme";
 
 export default function HistoryPage() {
-  const { getActiveParams } = useFilters();
+  const { getActiveParams, setFilter } = useFilters();
   const params = getActiveParams();
   const [nodeType, setNodeType] = useState("category");
 
@@ -56,14 +56,24 @@ export default function HistoryPage() {
 
       <div className="flex gap-3 animate-fade-in">
         <Select
-          label="Nivel de analisis"
+          label="Nivel de análisis"
           options={[
-            { value: "category", label: "Categoria" },
+            { value: "category", label: "Categoría" },
             { value: "sku", label: "SKU" },
             { value: "territory", label: "Territorio" },
           ]}
           value={nodeType}
           onChange={(e) => setNodeType(e.target.value)}
+        />
+        <Select
+          label="Confianza"
+          options={[
+            { value: "high", label: "Alta" },
+            { value: "medium", label: "Media" },
+            { value: "low", label: "Baja" },
+          ]}
+          value={params.confidence_level || ""}
+          onChange={(e) => setFilter("confidence_level", e.target.value)}
         />
       </div>
 

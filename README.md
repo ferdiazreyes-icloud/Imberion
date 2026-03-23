@@ -4,16 +4,20 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 
 ## Estado Actual
 
-- [x] Backend (FastAPI) — 23 endpoints, 21 unit tests passing
+- [x] Backend (FastAPI) — 24 endpoints, 29 unit tests passing
 - [x] Frontend (Next.js) — 5 módulos con datos en vivo
 - [x] Motor de elasticidades (log-log regression con scipy)
-- [x] Generador de datos mock (86 SKUs, 25 distribuidores, 24 meses)
+- [x] Generador de datos mock (86 SKUs, 75 distribuidores reales, 29 territorios, 24 meses)
 - [x] Docker setup para desarrollo local
 - [x] Deploy en producción (Railway)
 - [x] E2E tests con Playwright
 - [x] Integración del módulo analytics avanzado (predict_scenario + confidence_scorer) con API
 - [x] Visual refinement v2 — USG brand colors, Inter font, Tableau charts, dark mode, animations
 - [x] Simulador potenciado — drill-down, comparación multi-escenario, mejor escenario por objetivo
+- [x] Filtros ComboBox con búsqueda — territorio, categoría y distribuidor con type-ahead
+- [x] Selector de distribuidor — 75 distribuidores reales con filtro por segmento
+- [x] Confianza movida a módulo Historial exclusivamente
+- [x] Export CSV de escenarios en simulador
 
 ## URLs de Producción
 
@@ -28,8 +32,8 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 | Módulo | Ruta | Descripción |
 |--------|------|-------------|
 | Overview | `/` | Dashboard con 6 KPIs y drill-down por categoría, segmento y territorio |
-| Historial | `/history` | Elasticidades históricas, tendencias precio-volumen, scatter plot |
-| Simulador | `/simulator` | Simulador de escenarios con drill-down, comparación multi-escenario y recomendación de mejor escenario |
+| Historial | `/history` | Elasticidades históricas, tendencias precio-volumen, scatter plot, filtro de confianza |
+| Simulador | `/simulator` | Simulador de escenarios con drill-down, comparación multi-escenario, mejor escenario, export CSV |
 | Recomendaciones | `/recommendations` | Recomendaciones por segmento/territorio/SKU con export CSV |
 | Passthrough | `/passthrough` | Análisis de rebates, descuentos y precio neto |
 
@@ -76,7 +80,7 @@ npm run dev
 
 ## Tests
 
-### Backend (unit tests) — 21/21
+### Backend (unit tests) — 29/29
 
 ```bash
 cd backend
@@ -156,6 +160,7 @@ BASE_URL=http://localhost:3000 npx playwright test
 | GET | `/api/passthrough/by-category` | Passthrough por categoría |
 | GET | `/api/passthrough/trends` | Tendencias de componentes |
 | GET | `/api/export/recommendations-csv` | Exportar CSV |
+| GET | `/api/export/scenario-csv/{id}` | Exportar resultados de escenario a CSV |
 | GET | `/api/export/executive-summary` | Informe ejecutivo JSON |
 | POST | `/api/admin/seed` | Poblar BD con datos mock |
 
@@ -170,4 +175,14 @@ Todos los GET endpoints aceptan estos query params opcionales:
 | `region` | string | `Norte`, `Centro` |
 | `category_id` | int | `1` |
 | `product_id` | int | `15` |
+| `customer_id` | int | `1` |
 | `confidence_level` | string | `high`, `medium`, `low` |
+
+## Roadmap
+
+| # | Feature | Estado |
+|---|---------|--------|
+| 5 | Módulo de Rebates óptimos por distribuidor | Pendiente — validar con cliente |
+| 6b | Escenarios por carga de Excel (plan de precios) | Pendiente |
+| 6c | Escenarios por optimización automática (maximizar objetivo) | Pendiente |
+| 7 | Agente AI conversacional para consultar datos | Pendiente |

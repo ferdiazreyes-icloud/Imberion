@@ -1,6 +1,6 @@
 """
 Generate realistic mock data for USG Pricing Decision Engine MVP.
-86 SKUs, 10 categories, 25 distributors, 8 territories, 24 months of sell-in.
+86 SKUs, 10 categories, 75 distributors (real), 29 territories, 24 months of sell-in.
 """
 
 import json
@@ -23,18 +23,37 @@ from app.database import Base
 random.seed(42)
 np.random.seed(42)
 
-# --- Territory Data ---
+# --- Territory Data (29 states) ---
 TERRITORIES = [
-    ("Norte", "Nuevo León", "Monterrey"),
-    ("Norte", "Chihuahua", "Chihuahua"),
-    ("Norte", "Sonora", "Hermosillo"),
+    ("Centro", "Aguascalientes", "Aguascalientes"),
+    ("Noroeste", "Baja California", "Tijuana"),
+    ("Noroeste", "Baja California Sur", "La Paz"),
     ("Centro", "CDMX", "Benito Juárez"),
+    ("Sureste", "Campeche", "Campeche"),
+    ("Sureste", "Chiapas", "Tuxtla Gutiérrez"),
+    ("Norte", "Chihuahua", "Chihuahua"),
+    ("Norte", "Coahuila", "Saltillo"),
+    ("Occidente", "Colima", "Colima"),
+    ("Norte", "Durango", "Durango"),
     ("Centro", "Estado de México", "Naucalpan"),
-    ("Bajío", "Jalisco", "Guadalajara"),
     ("Bajío", "Guanajuato", "León"),
-    ("Sur", "Yucatán", "Mérida"),
-    ("Sur", "Veracruz", "Veracruz"),
-    ("Occidente", "Sinaloa", "Culiacán"),
+    ("Sur", "Guerrero", "Acapulco"),
+    ("Occidente", "Jalisco", "Guadalajara"),
+    ("Occidente", "Michoacán", "Morelia"),
+    ("Centro", "Morelos", "Cuernavaca"),
+    ("Occidente", "Nayarit", "Tepic"),
+    ("Norte", "Nuevo León", "Monterrey"),
+    ("Sur", "Oaxaca", "Oaxaca de Juárez"),
+    ("Centro", "Puebla", "Puebla"),
+    ("Bajío", "Querétaro", "Querétaro"),
+    ("Sureste", "Quintana Roo", "Cancún"),
+    ("Centro", "San Luis Potosí", "San Luis Potosí"),
+    ("Noroeste", "Sinaloa", "Culiacán"),
+    ("Noroeste", "Sonora", "Hermosillo"),
+    ("Sureste", "Tabasco", "Villahermosa"),
+    ("Norte", "Tamaulipas", "Reynosa"),
+    ("Sureste", "Veracruz", "Veracruz"),
+    ("Sureste", "Yucatán", "Mérida"),
 ]
 
 # --- Category & SKU Data ---
@@ -142,16 +161,84 @@ CATEGORIES = {
     ],
 }
 
-DISTRIBUTOR_NAMES = [
-    "Distribuidora del Norte SA", "Materiales Monterrey", "Grupo Constructor Chihuahua",
-    "Plafones y Sistemas CDMX", "Distribuciones del Centro", "Materiales Guadalajara SA",
-    "Bajío Construcción", "Distribuidora Sureste", "Materiales del Golfo",
-    "Placo Distribuciones", "Nacional de Materiales", "Grupo Tablaroca México",
-    "Construrama Afiliado Norte", "Dismat del Pacífico", "Acabados y Plafones SA",
-    "Distribuidora León Plus", "Materiales Premium Mérida", "Construcentro Veracruz",
-    "Ferremateriales Sinaloa", "Grupo Yeso Nacional", "Distribuidora Hermosillo",
-    "Plafones Express CDMX", "Materiales y Acabados Naucalpan",
-    "Proveedora de Construcción SA", "Red Nacional Distribuidores",
+# 75 real distributors from docs/distribuidores_por_estado_corregido.xlsx
+# Each entry: (name, {state: branch_count, ...})
+REAL_DISTRIBUTORS = [
+    ("VECTOR", {"Baja California": 9, "Baja California Sur": 5, "Chihuahua": 2, "Sonora": 3}),
+    ("IMAC", {"CDMX": 2, "Oaxaca": 3, "Puebla": 1, "Veracruz": 10}),
+    ("CONSTRUDECO", {"CDMX": 3, "Estado de México": 10, "Morelos": 2}),
+    ("HAZLO KONTABLA", {"Colima": 2, "Guanajuato": 2, "Jalisco": 10, "Querétaro": 1}),
+    ("OBREK", {"Quintana Roo": 8, "Yucatán": 5}),
+    ("CONSTRUCENTRO", {"CDMX": 5, "Estado de México": 2, "Guanajuato": 1, "Querétaro": 1, "Quintana Roo": 3}),
+    ("GRUPO NAPRESA", {"Jalisco": 7, "Nayarit": 1, "Sinaloa": 3}),
+    ("COMERCIAL MAYORISTA HERA", {"Estado de México": 8}),
+    ("TIENDAS CIASA", {"CDMX": 1, "Jalisco": 2, "Michoacán": 1, "Nayarit": 3, "Sinaloa": 1}),
+    ("CONSTRUTABLA", {"Chiapas": 1, "Oaxaca": 6}),
+    ("DAEMSA", {"Puebla": 7}),
+    ("MUROFAST", {"Baja California": 7}),
+    ("ALTA MATERIALES", {"Chihuahua": 6}),
+    ("ISOTERMIKA", {"Nuevo León": 5}),
+    ("MADERERA ELIZONDO", {"Tamaulipas": 5}),
+    ("MATERIALES ROJAS", {"Baja California": 4, "Baja California Sur": 1}),
+    ("PLAFONES E INTERIORES", {"Nuevo León": 5}),
+    ("FERRECONSTRU", {"Campeche": 4}),
+    ("CENTRO DE PREFABRICADOS", {"Morelos": 3}),
+    ("DUQUE CONSTRUMERCADO", {"San Luis Potosí": 3}),
+    ("DYC 21", {"Tabasco": 3}),
+    ("EXPO TILE", {"Sonora": 3}),
+    ("MAS CONSTRUCCIÓN", {"Nuevo León": 3}),
+    ("MATERIALES DEL NORTE", {"Chihuahua": 3}),
+    ("PICSA", {"Baja California": 3}),
+    ("ADEMA DE MÉXICO", {"CDMX": 2}),
+    ("FERRECENTRO DE NUEVA ROSITA", {"Coahuila": 2}),
+    ("IDYCSA", {"Coahuila": 1, "Nuevo León": 1}),
+    ("IMPULSORA DE LA VIVIENDA MODERNA", {"Chihuahua": 2}),
+    ("Materiales Mi Casa", {"Tamaulipas": 2}),
+    ("PLAFOMATE", {"CDMX": 1, "Estado de México": 1}),
+    ("PLAFONES E IMPERMEABILIZANTES DE SALTILLO", {"Coahuila": 2}),
+    ("RCH", {"Nuevo León": 2}),
+    ("SUKASA", {"Tamaulipas": 2}),
+    ("ACEROMAX", {"Tamaulipas": 1}),
+    ("ARLA", {"Baja California": 1}),
+    ("CODIPAY", {"CDMX": 1}),
+    ("COGUTSA", {"Querétaro": 1}),
+    ("CONSTRUCASA DEL SUR", {"Chiapas": 1}),
+    ("CONSTRUCCION LIGERA DE MICHOACAN", {"Michoacán": 1}),
+    ("CORRUGADOS DEL CENTRO", {"Coahuila": 1}),
+    ("DIMACO", {"Quintana Roo": 1}),
+    ("DIZA I2", {"Querétaro": 1}),
+    ("GASA TABLAROCA", {"Aguascalientes": 1}),
+    ("GM MATERIALES", {"Estado de México": 1}),
+    ("ICO INNOVACION EN CONSTRUCCION", {"San Luis Potosí": 1}),
+    ("INTEGRACION DE ESPACIO CORPORATIVOS", {"CDMX": 1}),
+    ("JakS Home Center", {"Nuevo León": 1}),
+    ("LA NUEVA ERA FERRETERIA", {"Chihuahua": 1}),
+    ("M + P MODULARES", {"CDMX": 1}),
+    ("MATERIALES ORTIZ", {"San Luis Potosí": 1}),
+    ("MULTIPLAFONES", {"Sinaloa": 1}),
+    ("MUROS Y PLAFONES DE NAYARIT", {"Nayarit": 1}),
+    ("MUROSOL", {"Guanajuato": 1}),
+    ("PEBER", {"Michoacán": 1}),
+    ("PROCASA", {"Veracruz": 1}),
+    ("PROMETAL", {"Baja California": 1}),
+    ("PRONTOPANEL", {"Michoacán": 1}),
+    ("RIGA DE MEXICO", {"Guerrero": 1}),
+    ("SOLET", {"Durango": 1}),
+    ("Sucursal Altamira", {"Tamaulipas": 1}),
+    ("Sucursal Camargo", {"Tamaulipas": 1}),
+    ("Sucursal Cedis", {"Chihuahua": 1}),
+    ("Sucursal Centro Constitución", {"Baja California Sur": 1}),
+    ("Sucursal Constitución", {"Chihuahua": 1}),
+    ("Sucursal El Marques", {"Querétaro": 1}),
+    ("Sucursal Hidalgo Ote", {"Coahuila": 1}),
+    ("Sucursal Nueva España", {"Chihuahua": 1}),
+    ("Sucursal Orizaba", {"Veracruz": 1}),
+    ("Sucursal Revolución", {"Coahuila": 1}),
+    ("Sucursal San Pedro", {"CDMX": 1}),
+    ("Sucursal Sn Pedro De Los Pinos", {"CDMX": 1}),
+    ("Sucursal Tecnológico", {"Chihuahua": 1}),
+    ("Sucursal Valle", {"Chihuahua": 1}),
+    ("TAQUETES Y TABLAROCA USG", {"Guerrero": 1}),
 ]
 
 SEGMENTS = ["oro", "plata", "bronce"]
@@ -176,30 +263,37 @@ def seed_territories(db):
 
 
 def seed_customers(db, territories):
+    # Build state -> territory lookup
+    state_to_territory = {t.state: t for t in territories}
+
     customers = []
-    for i, name in enumerate(DISTRIBUTOR_NAMES):
+    for name, branches_by_state in REAL_DISTRIBUTORS:
         segment = random.choices(SEGMENTS, SEGMENT_WEIGHTS)[0]
-        territory = territories[i % len(territories)]
+        # Assign customer to the territory of their state with most branches
+        primary_state = max(branches_by_state, key=branches_by_state.get)
+        territory = state_to_territory[primary_state]
         c = Customer(name=name, type="distribuidor", segment=segment, territory_id=territory.id)
         db.add(c)
-        customers.append(c)
+        customers.append((c, branches_by_state))
     db.flush()
 
-    # Create 1-3 branches per customer
-    for c in customers:
-        n_branches = random.randint(1, 3)
-        t = next(t for t in territories if t.id == c.territory_id)
-        for j in range(n_branches):
-            branch = Branch(
-                customer_id=c.id,
-                name=f"{c.name} - Sucursal {j+1}",
-                municipality=t.municipality,
-                state=t.state,
-            )
-            db.add(branch)
+    # Create branches per customer based on real Excel data
+    branch_count = 0
+    for c, branches_by_state in customers:
+        for state, count in branches_by_state.items():
+            t = state_to_territory[state]
+            for j in range(count):
+                branch = Branch(
+                    customer_id=c.id,
+                    name=f"{c.name} - {state} #{j+1}" if count > 1 else f"{c.name} - {state}",
+                    municipality=t.municipality,
+                    state=t.state,
+                )
+                db.add(branch)
+                branch_count += 1
     db.flush()
-    print(f"  {len(customers)} customers created.")
-    return customers
+    print(f"  {len(customers)} customers, {branch_count} branches created.")
+    return [c for c, _ in customers]
 
 
 def seed_categories_and_products(db):

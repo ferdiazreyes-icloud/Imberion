@@ -13,7 +13,7 @@ import { useFilters } from "@/hooks/useFilters";
 import {
   quickSimulate, getScenarios, createScenario, getScenarioResults,
   getScenarioSummary, getScenarioResultsGrouped,
-  compareMultiScenarios, getBestScenario,
+  compareMultiScenarios, getBestScenario, getExportScenarioCSVUrl,
 } from "@/lib/api";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 import { CHART_COLORS, TABLEAU_PALETTE, tooltipStyle, axisTickStyle, gridStyle } from "@/lib/chart-theme";
@@ -285,8 +285,21 @@ export default function SimulatorPage() {
 
             {/* Scenario summary + drill-down */}
             <Card className="lg:col-span-2">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Resultados del Escenario</CardTitle>
+                {selectedScenario && (
+                  <button
+                    onClick={() => window.open(getExportScenarioCSVUrl(selectedScenario), "_blank")}
+                    className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
+                    style={{
+                      borderColor: "var(--border-primary)",
+                      color: "var(--text-secondary)",
+                      background: "var(--bg-tertiary)",
+                    }}
+                  >
+                    Exportar CSV
+                  </button>
+                )}
               </CardHeader>
               <CardContent>
                 {!selectedScenario ? (

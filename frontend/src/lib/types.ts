@@ -4,6 +4,7 @@ export interface Filters {
   region?: string;
   category_id?: string;
   product_id?: string;
+  customer_id?: string;
   period_start?: string;
   period_end?: string;
   confidence_level?: string;

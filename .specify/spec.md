@@ -43,7 +43,7 @@ A B2B pricing decision engine that transforms sell-in data into actionable prici
 ## Data Domain (Mock)
 
 - 86 SKUs across 10 categories
-- 25 distributors in 3 segments (oro/plata/bronce)
-- 10 territories across 5 regions in Mexico
+- 75 real distributors in 3 segments (oro/plata/bronce) — from distribuidores_por_estado_corregido.xlsx
+- 29 territories across 6 regions in Mexico
 - 24 months of sell-in transactions (Jan 2024 - Dec 2025)
 - Pre-computed elasticities by category, SKU, segment, and territory

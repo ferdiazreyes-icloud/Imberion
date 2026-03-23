@@ -258,6 +258,7 @@ def quick_simulate(
     product_id: Optional[int] = None,
     category_id: Optional[int] = None,
     segment: Optional[str] = None,
+    customer_id: Optional[int] = None,
     price_change_pct: float = 5.0,
     db: Session = Depends(get_db),
 ):
@@ -283,6 +284,8 @@ def quick_simulate(
             func.avg(Transaction.net_price), func.sum(Transaction.volume), func.sum(Transaction.revenue)
         )
 
+    if customer_id:
+        base_q = base_q.filter(Transaction.customer_id == customer_id)
     if segment:
         base_q = base_q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
 

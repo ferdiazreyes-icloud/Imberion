@@ -2,8 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Select } from "@/components/ui/select";
+import { ComboBox } from "@/components/ui/combobox";
 import { useFilters } from "@/hooks/useFilters";
-import { getFilterCategories, getFilterTerritories } from "@/lib/api";
+import { getFilterCategories, getFilterTerritories, getFilterCustomers } from "@/lib/api";
 
 export function GlobalFilters() {
   const { filters, setFilter, clearFilters } = useFilters();
@@ -20,8 +21,15 @@ export function GlobalFilters() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: customersRaw } = useQuery({
+    queryKey: ["filter-customers", filters.segment],
+    queryFn: () => getFilterCustomers(filters.segment),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const categories = (categoriesRaw || []).map((c) => ({ value: String(c.id), label: c.name }));
   const territories = (territoriesRaw || []).map((t) => ({ value: String(t.id), label: `${t.state} - ${t.municipality}` }));
+  const customers = (customersRaw || []).map((c) => ({ value: String(c.id), label: `${c.name} (${c.segment})` }));
 
   return (
     <div
@@ -41,27 +49,23 @@ export function GlobalFilters() {
         value={filters.segment || ""}
         onChange={(e) => setFilter("segment", e.target.value)}
       />
-      <Select
+      <ComboBox
         label="Territorio"
         options={territories}
         value={filters.territory_id || ""}
-        onChange={(e) => setFilter("territory_id", e.target.value)}
+        onChange={(val) => setFilter("territory_id", val)}
       />
-      <Select
-        label="Categoria"
+      <ComboBox
+        label="Categoría"
         options={categories}
         value={filters.category_id || ""}
-        onChange={(e) => setFilter("category_id", e.target.value)}
+        onChange={(val) => setFilter("category_id", val)}
       />
-      <Select
-        label="Confianza"
-        options={[
-          { value: "high", label: "Alta" },
-          { value: "medium", label: "Media" },
-          { value: "low", label: "Baja" },
-        ]}
-        value={filters.confidence_level || ""}
-        onChange={(e) => setFilter("confidence_level", e.target.value)}
+      <ComboBox
+        label="Distribuidor"
+        options={customers}
+        value={filters.customer_id || ""}
+        onChange={(val) => setFilter("customer_id", val)}
       />
       <button
         onClick={clearFilters}

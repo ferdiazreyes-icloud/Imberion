@@ -310,3 +310,72 @@ def test_best_scenario_no_scenarios(client, db):
     _seed_basic_data(db)
     resp = client.get("/api/simulator/best-scenario?objective=volume")
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# customer_id filter tests
+# ---------------------------------------------------------------------------
+
+def test_overview_with_customer_id(client, db):
+    data = _seed_basic_data(db)
+    resp = client.get(f"/api/overview?customer_id={data['customer'].id}")
+    assert resp.status_code == 200
+    assert resp.json()["total_volume"]["value"] > 0
+
+
+def test_overview_with_invalid_customer_id(client, db):
+    _seed_basic_data(db)
+    resp = client.get("/api/overview?customer_id=9999")
+    assert resp.status_code == 200
+    assert resp.json()["total_volume"]["value"] == 0
+
+
+def test_passthrough_with_customer_id(client, db):
+    data = _seed_basic_data(db)
+    resp = client.get(f"/api/passthrough/by-segment?customer_id={data['customer'].id}")
+    assert resp.status_code == 200
+
+
+def test_history_trends_with_customer_id(client, db):
+    data = _seed_basic_data(db)
+    resp = client.get(f"/api/history/trends?customer_id={data['customer'].id}")
+    assert resp.status_code == 200
+
+
+def test_filters_customers(client, db):
+    _seed_basic_data(db)
+    resp = client.get("/api/filters/customers")
+    assert resp.status_code == 200
+    customers = resp.json()
+    assert len(customers) >= 1
+    assert customers[0]["name"] == "Test Distributor"
+
+
+def test_filters_customers_by_segment(client, db):
+    _seed_basic_data(db)
+    resp = client.get("/api/filters/customers?segment=oro")
+    assert resp.status_code == 200
+    assert len(resp.json()) >= 1
+    resp2 = client.get("/api/filters/customers?segment=plata")
+    assert resp2.status_code == 200
+    assert len(resp2.json()) == 0
+
+
+# ---------------------------------------------------------------------------
+# Scenario CSV export test
+# ---------------------------------------------------------------------------
+
+def test_export_scenario_csv(client, db):
+    sid = _create_test_scenario(client, db)
+    resp = client.get(f"/api/export/scenario-csv/{sid}")
+    assert resp.status_code == 200
+    assert "text/csv" in resp.headers["content-type"]
+    content = resp.content.decode("utf-8")
+    assert "Product" in content
+    assert "Expected Volume" in content
+
+
+def test_export_scenario_csv_not_found(client, db):
+    _seed_basic_data(db)
+    resp = client.get("/api/export/scenario-csv/9999")
+    assert resp.status_code == 404

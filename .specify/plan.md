@@ -50,10 +50,19 @@ All endpoints under `/api/` prefix with OpenAPI auto-documentation at `/docs`.
 - Simulator quick-simulate fixed: POST→GET method alignment, safe fallback for empty data
 - Analytics engine integrated: `predict_scenario()` and `confidence_scorer()` connected to simulator endpoints
 - Enhanced simulator: drill-down, multi-scenario comparison, best scenario recommendation
+- ComboBox searchable dropdowns for territory, category, and distributor filters
+- 75 real distributors with state-level branch mapping (from Excel)
+- customer_id filter on all transaction-based endpoints
+- Confidence filter moved to History module only
+- Scenario CSV export endpoint + button in simulator UI
 
 ## Pending Improvements
 
 - Authentication (currently open access)
-- PDF/Excel export
+- PDF/Excel export (functional — buttons exist, CSV works)
 - Bundle/combo elasticities (requires new ADM cycle — new data models, cross-elasticity analytics)
 - CI/CD pipeline (GitHub Actions)
+- Optimal Rebates module by distributor (pending client validation)
+- Excel-based scenario creation (upload price plan, system evaluates and suggests)
+- Automatic optimization scenarios (maximize margin/share/revenue by distributor/segment)
+- AI conversational agent for data queries

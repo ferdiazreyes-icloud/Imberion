@@ -85,4 +85,6 @@ export const getFilterCustomers = (segment?: string) => {
 // Export
 export const getExportCSVUrl = (params?: Record<string, string>) =>
   `${API_URL}/api/export/recommendations-csv${toQueryString(params)}`;
+export const getExportScenarioCSVUrl = (scenarioId: number) =>
+  `${API_URL}/api/export/scenario-csv/${scenarioId}`;
 export const getExecutiveSummary = () => fetchAPI<Record<string, unknown>>("/api/export/executive-summary");
