@@ -67,10 +67,18 @@ def get_territories(db: Session = Depends(get_db)):
 
 
 @app.get("/api/filters/customers")
-def get_customers(segment: Optional[str] = None, db: Session = Depends(get_db)):
+def get_customers(
+    segment: Optional[str] = None,
+    territory_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
     q = db.query(Customer)
     if segment:
-        q = q.filter(Customer.segment == segment)
+        segments = [s.strip() for s in segment.split(",") if s.strip()]
+        q = q.filter(Customer.segment.in_(segments)) if len(segments) > 1 else q.filter(Customer.segment == segments[0])
+    if territory_id:
+        tids = [int(t) for t in territory_id.split(",") if t.strip()]
+        q = q.filter(Customer.territory_id.in_(tids)) if len(tids) > 1 else q.filter(Customer.territory_id == tids[0])
     customers = q.all()
     return [{"id": c.id, "name": c.name, "segment": c.segment} for c in customers]
 

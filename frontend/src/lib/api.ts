@@ -77,8 +77,11 @@ export const getFilterCategories = () =>
 export const getFilterTerritories = () =>
   fetchAPI<Array<{ id: number; region: string; state: string; municipality: string }>>("/api/filters/territories");
 export const getFilterRegions = () => fetchAPI<string[]>("/api/filters/regions");
-export const getFilterCustomers = (segment?: string) => {
-  const qs = segment ? `?segment=${segment}` : "";
+export const getFilterCustomers = (segment?: string, territoryId?: string) => {
+  const params = new URLSearchParams();
+  if (segment) params.set("segment", segment);
+  if (territoryId) params.set("territory_id", territoryId);
+  const qs = params.toString() ? `?${params.toString()}` : "";
   return fetchAPI<Array<{ id: number; name: string; segment: string }>>(`/api/filters/customers${qs}`);
 };
 

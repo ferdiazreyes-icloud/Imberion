@@ -18,8 +18,15 @@ def _parse_ids(val: Optional[str]) -> Optional[list]:
     return [int(x) for x in val.split(",") if x.strip()]
 
 
+def _parse_strs(val: Optional[str]) -> Optional[list]:
+    """Parse comma-separated strings into list."""
+    if not val:
+        return None
+    return [x.strip() for x in val.split(",") if x.strip()]
+
+
 def _filter_ids(q, column, ids: Optional[list]):
-    """Apply single or multi-ID filter to a query."""
+    """Apply single or multi-value filter to a query."""
     if not ids:
         return q
     if len(ids) == 1:
@@ -49,8 +56,9 @@ def get_overview(
     )
 
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
-    if segment:
-        q = q.join(Customer).filter(Customer.segment == segment)
+    segs = _parse_strs(segment)
+    if segs:
+        q = q.join(Customer).filter(Customer.segment.in_(segs) if len(segs) > 1 else Customer.segment == segs[0])
     q = _filter_ids(q, Transaction.territory_id, _parse_ids(territory_id))
     if region:
         q = q.join(Territory).filter(Territory.region == region)
@@ -107,8 +115,9 @@ def overview_by_category(
     ).join(Product, Product.id == Transaction.product_id).join(Category, Category.id == Product.category_id)
 
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
-    if segment:
-        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
+    segs = _parse_strs(segment)
+    if segs:
+        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment.in_(segs) if len(segs) > 1 else Customer.segment == segs[0])
     q = _filter_ids(q, Transaction.territory_id, _parse_ids(territory_id))
 
     rows = q.group_by(Category.id, Category.name).all()
@@ -182,8 +191,9 @@ def overview_by_territory(
     ).join(Territory, Territory.id == Transaction.territory_id)
 
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
-    if segment:
-        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
+    segs = _parse_strs(segment)
+    if segs:
+        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment.in_(segs) if len(segs) > 1 else Customer.segment == segs[0])
     cat_ids = _parse_ids(category_id)
     if cat_ids:
         q = q.join(Product, Product.id == Transaction.product_id).filter(

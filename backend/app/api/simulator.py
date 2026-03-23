@@ -263,7 +263,7 @@ def quick_simulate(
     db: Session = Depends(get_db),
 ):
     """Quick simulation without persisting. Returns price-volume-margin curve."""
-    from app.api.overview import _parse_ids, _filter_ids
+    from app.api.overview import _parse_ids, _parse_strs, _filter_ids
 
     cat_ids = _parse_ids(category_id)
     # Fetch elasticity and base data ONCE outside the loop
@@ -288,8 +288,9 @@ def quick_simulate(
         )
 
     base_q = _filter_ids(base_q, Transaction.customer_id, _parse_ids(customer_id))
-    if segment:
-        base_q = base_q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
+    segs = _parse_strs(segment)
+    if segs:
+        base_q = base_q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment.in_(segs) if len(segs) > 1 else Customer.segment == segs[0])
 
     row = base_q.one_or_none()
     if not row or row[0] is None:

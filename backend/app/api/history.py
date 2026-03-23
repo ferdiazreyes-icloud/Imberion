@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Transaction, Customer, Product, Territory, Category, Elasticity
 from app.schemas.analytics import ElasticityOut, TrendPoint, TrendResponse
-from app.api.overview import _parse_ids, _filter_ids
+from app.api.overview import _parse_ids, _parse_strs, _filter_ids
 
 router = APIRouter()
 
@@ -64,8 +64,9 @@ def get_trends(
         label_q = "Portafolio Total"
 
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
-    if segment:
-        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
+    segs = _parse_strs(segment)
+    if segs:
+        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment.in_(segs) if len(segs) > 1 else Customer.segment == segs[0])
     q = _filter_ids(q, Transaction.territory_id, _parse_ids(territory_id))
 
     rows = q.group_by("year", "month").order_by("year", "month").all()
@@ -112,8 +113,9 @@ def get_price_volume_scatter(
     if cat_ids:
         q = q.join(Product).filter(Product.category_id.in_(cat_ids) if len(cat_ids) > 1 else Product.category_id == cat_ids[0])
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
-    if segment:
-        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
+    segs = _parse_strs(segment)
+    if segs:
+        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment.in_(segs) if len(segs) > 1 else Customer.segment == segs[0])
 
     rows = q.group_by("year", "month").order_by("year", "month").all()
 

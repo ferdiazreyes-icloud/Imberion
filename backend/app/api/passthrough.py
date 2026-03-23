@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Transaction, Customer, Product, Territory, Category
-from app.api.overview import _parse_ids, _filter_ids
+from app.api.overview import _parse_ids, _parse_strs, _filter_ids
 
 router = APIRouter()
 
@@ -72,8 +72,9 @@ def passthrough_by_category(
     ).join(Product, Product.id == Transaction.product_id).join(Category, Category.id == Product.category_id)
 
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
-    if segment:
-        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
+    segs = _parse_strs(segment)
+    if segs:
+        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment.in_(segs) if len(segs) > 1 else Customer.segment == segs[0])
     q = _filter_ids(q, Transaction.territory_id, _parse_ids(territory_id))
 
     rows = q.group_by(Category.id, Category.name).all()
@@ -112,8 +113,9 @@ def passthrough_trends(
     )
 
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
-    if segment:
-        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment == segment)
+    segs = _parse_strs(segment)
+    if segs:
+        q = q.join(Customer, Customer.id == Transaction.customer_id).filter(Customer.segment.in_(segs) if len(segs) > 1 else Customer.segment == segs[0])
     cat_ids = _parse_ids(category_id)
     if cat_ids:
         q = q.join(Product, Product.id == Transaction.product_id).filter(

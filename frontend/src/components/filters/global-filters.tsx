@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Select } from "@/components/ui/select";
 import { ComboBox } from "@/components/ui/combobox";
 import { useFilters } from "@/hooks/useFilters";
 import { getFilterCategories, getFilterTerritories, getFilterCustomers } from "@/lib/api";
@@ -22,8 +21,8 @@ export function GlobalFilters() {
   });
 
   const { data: customersRaw } = useQuery({
-    queryKey: ["filter-customers", filters.segment],
-    queryFn: () => getFilterCustomers(filters.segment),
+    queryKey: ["filter-customers", filters.segment, filters.territory_id],
+    queryFn: () => getFilterCustomers(filters.segment, filters.territory_id),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -39,7 +38,7 @@ export function GlobalFilters() {
         border: "1px solid var(--border-primary)",
       }}
     >
-      <Select
+      <ComboBox
         label="Segmento"
         options={[
           { value: "oro", label: "Oro" },
@@ -47,7 +46,7 @@ export function GlobalFilters() {
           { value: "bronce", label: "Bronce" },
         ]}
         value={filters.segment || ""}
-        onChange={(e) => setFilter("segment", e.target.value)}
+        onChange={(val) => setFilter("segment", val)}
       />
       <ComboBox
         label="Territorio"
