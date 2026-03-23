@@ -91,7 +91,7 @@ source .venv/bin/activate
 python -m pytest tests/ -v
 ```
 
-### E2E (Playwright) — 28/28
+### E2E (Playwright) — 32/32
 
 ```bash
 cd e2e
@@ -107,9 +107,9 @@ BASE_URL=http://localhost:3000 npx playwright test
 
 | Suite | Tests | Qué verifica |
 |-------|-------|-------------|
-| Overview | 4 | KPIs cargan, gráficas renderizan, filtros presentes, filtro de segmento funciona |
-| Historial | 5 | Tendencias precio-volumen, scatter plot, tabla de elasticidades, selector de nivel de análisis |
-| Simulador | 6+ | Tabs (Simular/Comparar/Mejor), curva precio-volumen-margen, slider de precio, drill-down por nivel, comparación multi-escenario, mejor escenario por objetivo |
+| Overview | 4 | KPIs cargan, gráficas renderizan, filtros ComboBox presentes, segmento multi-select funciona |
+| Historial | 6 | Tendencias, scatter, tabla elasticidades, selector nivel, filtro confianza local |
+| Simulador | 9 | 5 tabs visibles, curva precio-volumen-margen, slider, elasticidad, save form, secciones scroll, tab Excel, tab Optimizar |
 | Recomendaciones | 5 | Tabla con datos, métricas agregadas, badges de acción/confianza, botones de export |
 | Passthrough | 5 | Descomposición por segmento, rebate por categoría, evolución de componentes de precio |
 | Navegación | 3 | Sidebar con todos los links, navegación entre páginas, health check del API |
@@ -174,15 +174,15 @@ BASE_URL=http://localhost:3000 npx playwright test
 
 Todos los GET endpoints aceptan estos query params opcionales:
 
-| Parámetro | Tipo | Ejemplo |
-|-----------|------|---------|
-| `segment` | string | `oro`, `plata`, `bronce` |
-| `territory_id` | int | `1` |
-| `region` | string | `Norte`, `Centro` |
-| `category_id` | int | `1` |
-| `product_id` | int | `15` |
-| `customer_id` | int | `1` |
-| `confidence_level` | string | `high`, `medium`, `low` |
+| Parámetro | Tipo | Ejemplo | Multi-select |
+|-----------|------|---------|--------------|
+| `segment` | string | `oro`, `oro,plata` | Sí |
+| `territory_id` | string | `1`, `1,5,12` | Sí |
+| `region` | string | `Norte`, `Centro` | No |
+| `category_id` | string | `1`, `1,3` | Sí |
+| `product_id` | int | `15` | No |
+| `customer_id` | string | `1`, `1,5,12` | Sí |
+| `confidence_level` | string | `high`, `medium`, `low` | No (solo en History) |
 
 ## Roadmap
 
