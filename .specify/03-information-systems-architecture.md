@@ -147,11 +147,14 @@ Imberion/
 │   │   │   │   └── page.tsx     # Módulo 2: Simulador de escenarios
 │   │   │   ├── recommendations/
 │   │   │   │   └── page.tsx     # Módulo 3: Recomendaciones
-│   │   │   └── passthrough/
-│   │   │       └── page.tsx     # Módulo 4: Rebates y passthrough
+│   │   │   ├── passthrough/
+│   │   │   │   └── page.tsx     # Módulo 4: Rebates y passthrough
+│   │   │   └── agent/
+│   │   │       └── page.tsx     # Módulo 5: Agente AI conversacional
 │   │   ├── components/
 │   │   │   ├── ui/              # Componentes base (shadcn/ui)
 │   │   │   ├── charts/          # Componentes de gráficos
+│   │   │   ├── chat/            # Agente AI: ChatPanel, ChatBubble, ChatInput, ChatToggle
 │   │   │   ├── filters/         # Panel de filtros global
 │   │   │   ├── tables/          # Tablas de datos
 │   │   │   └── export/          # Componentes de exportación
@@ -161,6 +164,8 @@ Imberion/
 │   │   │   └── utils.ts         # Utilidades
 │   │   └── hooks/
 │   │       ├── useFilters.ts    # Hook de filtros globales
+│   │       ├── useChatStore.ts  # Zustand store para chat AI (messages, SSE streaming)
+│   │       ├── usePageContext.ts # Contexto de página para el agente (pathname + filtros)
 │   │       └── useScenario.ts   # Hook de simulación
 │   ├── package.json
 │   └── next.config.js
@@ -189,16 +194,22 @@ Imberion/
 │   │   │   ├── simulator.py     # POST /api/simulator/scenarios
 │   │   │   ├── recommendations.py
 │   │   │   ├── passthrough.py
-│   │   │   └── export.py        # GET /api/export/report
+│   │   │   ├── export.py        # GET /api/export/report
+│   │   │   └── agent.py         # POST /api/agent/chat (SSE streaming)
 │   │   ├── services/            # Business logic
 │   │   │   ├── elasticity.py    # Cálculo de elasticidades
 │   │   │   ├── simulator.py     # Motor de simulación
 │   │   │   ├── recommendation.py# Motor de recomendaciones
 │   │   │   └── confidence.py    # Cálculo de confianza
-│   │   └── analytics/           # Motor analítico
-│   │       ├── elasticity_model.py
-│   │       ├── prediction_model.py
-│   │       └── confidence_scorer.py
+│   │   ├── analytics/           # Motor analítico
+│   │   │   ├── elasticity_model.py
+│   │   │   ├── prediction_model.py
+│   │   │   └── confidence_scorer.py
+│   │   └── agent/               # Agente AI conversacional
+│   │       ├── tools.py         # 7 herramientas (reutilizan queries existentes)
+│   │       ├── graph.py         # LangGraph: 4 nodos multi-modelo
+│   │       ├── prompts.py       # System prompts (orquestador, analista, sintetizador)
+│   │       └── state.py         # TypedDict del estado del grafo
 │   ├── migrations/              # Alembic migrations
 │   ├── seeds/                   # Datos mock
 │   │   └── generate_mock_data.py
@@ -225,6 +236,7 @@ Imberion/
 | GET | `/api/recommendations` | Recomendaciones | segment, territory, category, confidence |
 | GET | `/api/passthrough/rebates` | Análisis de rebates | segment, territory, sku |
 | GET | `/api/export/report` | Generar informe PDF/Excel | filters |
+| POST | `/api/agent/chat` | Chat conversacional con agente AI (SSE streaming) | messages, context |
 
 ### 2.3 Componentes Frontend Clave
 
@@ -239,3 +251,53 @@ Imberion/
 | `DrillDownTable` | Tabla con expansión jerárquica | Todos |
 | `ScenarioComparator` | Vista side-by-side de escenarios | Simulator |
 | `ExportButton` | Botón de exportación (PDF/Excel) | Recommendations |
+| `ChatPanel` | Panel lateral colapsable (w-96) con historial de chat y input | Todas (layout) |
+| `ChatToggle` | Botón flotante bottom-right para abrir/cerrar el chat | Todas (layout) |
+| `ChatBubble` | Burbuja de mensaje con markdown rendering (user vs assistant) | ChatPanel, Agent |
+| `ChatInput` | Textarea con auto-resize y envío con Enter | ChatPanel, Agent |
+
+### 2.4 Arquitectura del Agente AI (LangGraph)
+
+```
+                        ┌─────────────────────┐
+          Mensaje  ───► │   Orchestrator       │
+          + contexto    │   (Claude Sonnet 4)  │
+          de página     │                      │
+                        │   Clasifica intent:  │
+                        │   simple / deep /    │
+                        │   direct             │
+                        └─────┬───────┬────────┘
+                              │       │
+                  ┌───────────┘       └───────────┐
+                  ▼                               ▼
+        ┌─────────────────┐             ┌─────────────────┐
+        │  Tool Executor   │             │  Direct Response │
+        │  (Sonnet — fast) │             │  (Sonnet)        │
+        │                  │             │  Saludos,        │
+        │  7 Tools:        │             │  off-topic       │
+        │  - get_kpis      │             └────────┬────────┘
+        │  - get_revenue   │                      │
+        │  - get_trends    │                      ▼ END
+        │  - get_elasticity│
+        │  - simulate      │
+        │  - get_recs      │
+        │  - get_passthru  │
+        └────────┬─────────┘
+                 │
+        route="simple"           route="deep"
+            │                        │
+            ▼                        ▼
+  ┌─────────────────┐    ┌─────────────────┐
+  │   Synthesizer    │    │  Deep Analyst    │
+  │   (Sonnet)       │    │  (Claude Opus 4) │
+  │                  │    │                  │
+  │   Formatea       │    │  Análisis causal │
+  │   respuesta      │    │  estratégico     │
+  │   final          │    │  correlaciones   │
+  └────────┬─────────┘    └────────┬─────────┘
+           │                       │
+           ▼                       ▼
+          END                 Synthesizer → END
+```
+
+**Flujo de datos:** El frontend envía `{messages, context}` donde `context` incluye la página actual (`/simulator`, `/history`, etc.), los filtros activos, y un resumen de lo que ve el usuario. El agente usa este contexto para dar respuestas relevantes.

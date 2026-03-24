@@ -24,24 +24,27 @@ USG necesita tomar decisiones de pricing basadas en datos para su canal de distr
 ┌─────────────────────────────────────────────────────────────────┐
 │                        USUARIO FINAL                            │
 │         (Pricing / Commercial Excellence / Dirección)           │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    FRONTEND (Next.js)                            │
-│                                                                  │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────────────┐  │
-│  │ Overview  │ │ History  │ │Simulator │ │ Recommendations   │  │
-│  │Dashboard  │ │Elasticity│ │Scenarios │ │ by Segment/Terr.  │  │
-│  └──────────┘ └──────────┘ └──────────┘ └───────────────────┘  │
-│                                                                  │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐                        │
-│  │Passthru  │ │ Sell-out  │ │Confidence│                        │
-│  │& Rebates │ │(Optional) │ │ Levels   │                        │
-│  └──────────┘ └──────────┘ └──────────┘                        │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │ REST API (JSON)
-                           ▼
+└─────────────────┬───────────────────────┬───────────────────────┘
+                  │                       │
+                  ▼                       ▼
+┌────────────────────────────────┐  ┌─────────────────────────┐
+│      FRONTEND (Next.js)        │  │   AGENTE AI (Chat)       │
+│                                │  │                          │
+│  ┌─────────┐ ┌─────────┐      │  │  Panel lateral (w-96)    │
+│  │Overview  │ │ History │      │  │  + Página dedicada       │
+│  │Dashboard │ │Elasticit│      │  │                          │
+│  └─────────┘ └─────────┘      │  │  "¿Por qué bajó el      │
+│  ┌─────────┐ ┌───────────┐   │  │   margen en el Norte?"   │
+│  │Simulator│ │Recommend. │    │  │                          │
+│  │Scenarios│ │by Segment │    │  │  Contexto: ve la misma   │
+│  └─────────┘ └───────────┘   │  │  página y filtros que    │
+│  ┌─────────┐                  │  │  el usuario              │
+│  │Passthru │                  │  │                          │
+│  │& Rebates│                  │  └──────────┬───────────────┘
+│  └─────────┘                  │             │
+└────────────────┬──────────────┘             │
+                 │ REST API (JSON)            │ SSE Streaming
+                 ▼                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    BACKEND (FastAPI)                              │
 │                                                                  │
@@ -50,7 +53,19 @@ USG necesita tomar decisiones de pricing basadas en datos para su canal de distr
 │  │  (Routes +   │  │  Engine      │  │   Engine               │  │
 │  │   Filters)   │  │  (Elasticity │  │   (Pricing rules +     │  │
 │  │              │  │   Models)    │  │    confidence scores)  │  │
-│  └─────────────┘  └─────────────┘  └────────────────────────┘  │
+│  └──────┬──────┘  └─────────────┘  └────────────────────────┘  │
+│         │                                                        │
+│  ┌──────┴──────────────────────────────────────────────────┐    │
+│  │              AI AGENT SERVICE (LangGraph)                 │    │
+│  │                                                          │    │
+│  │  Orchestrator ──► Tool Executor ──► Deep Analyst         │    │
+│  │  (Sonnet 4)       (Sonnet 4)       (Opus 4)             │    │
+│  │       │               │                │                 │    │
+│  │       │          7 Tools (reuse        │                 │    │
+│  │       │          existing queries)     │                 │    │
+│  │       └──────────────────────────► Synthesizer           │    │
+│  │                                    (Sonnet 4)            │    │
+│  └──────────────────────────────────────────────────────────┘    │
 └──────────────────────────┬──────────────────────────────────────┘
                            │ SQL / ORM
                            ▼

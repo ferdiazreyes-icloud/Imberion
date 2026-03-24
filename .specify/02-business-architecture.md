@@ -35,6 +35,13 @@ USG Pricing Decision Engine
 │   ├── Export de Escenarios
 │   └── Vistas Filtradas
 │
+├── Consulta Conversacional (Agente AI)
+│   ├── Consulta de KPIs y métricas por lenguaje natural
+│   ├── Análisis causal y estratégico (multi-modelo)
+│   ├── Simulación de escenarios por conversación
+│   ├── Contexto de pantalla (ve lo que el usuario ve)
+│   └── 7 herramientas (tools) que reutilizan la lógica existente
+│
 └── [Futuro] Extensiones
     ├── Sell-out Integration
     ├── Competitive Intelligence
@@ -61,10 +68,13 @@ oportunidad        elasticidades       escenarios       con confianza       con 
 (Overview)         históricas          (Simulator)      estadística         analítico
                    (History)                            (Confidence)        (Recommendations)
                                                                             │
-                                                                            ▼
-                                                                        Exportar
-                                                                        informe
-                                                                        ejecutivo
+       ┌────────────────────────────────────────────────────────────────────┤
+       │                                                                    ▼
+       ▼                                                                Exportar
+  AGENTE AI ◄──► Consulta en cualquier punto del flujo                  informe
+  "¿Por qué bajó    usando lenguaje natural.                            ejecutivo
+   el margen?"       El agente ve la misma pantalla
+                     y filtros que el usuario.
 ```
 
 ---
@@ -195,6 +205,8 @@ Portafolio USG (86 SKUs)
 | RN-06 | Sell-out solo se activa si existe data del distribuidor | Sell-out |
 | RN-07 | Competidores solo aparece con datos robustos | Competitors |
 | RN-08 | Cada recomendación incluye racional: elasticidad, margen, volumen, sensibilidad | Recommendations |
+| RN-09 | El agente AI solo consulta datos, nunca los modifica (read-only) | Agent |
+| RN-10 | El agente siempre usa herramientas para datos reales — nunca inventa números | Agent |
 
 ---
 
