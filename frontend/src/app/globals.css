@@ -258,6 +258,58 @@ body {
   background: var(--text-tertiary);
 }
 
+/* ===== CHAT MARKDOWN ===== */
+
+.chat-markdown .chat-h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 8px 0 4px;
+  color: var(--text-primary);
+}
+
+.chat-markdown .chat-h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 6px 0 2px;
+  color: var(--text-primary);
+}
+
+.chat-markdown .chat-p {
+  margin: 2px 0;
+}
+
+.chat-markdown .chat-li {
+  padding-left: 12px;
+  position: relative;
+  margin: 2px 0;
+}
+
+.chat-markdown .chat-li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--usg-red);
+  font-weight: 700;
+}
+
+.chat-markdown .chat-li-num {
+  padding-left: 12px;
+  margin: 2px 0;
+  list-style: decimal inside;
+}
+
+.chat-markdown .chat-code {
+  background: var(--bg-primary);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.chat-markdown br + br {
+  display: none;
+}
+
 /* ===== RECHARTS OVERRIDES ===== */
 
 .recharts-cartesian-grid line {

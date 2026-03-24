@@ -10,7 +10,7 @@ export function ChatBubble({ message }: ChatBubbleProps) {
   const isUser = message.role === "user";
 
   if (!message.content && !isUser) {
-    return null; // Don't render empty assistant messages
+    return null;
   }
 
   return (
@@ -31,15 +31,48 @@ export function ChatBubble({ message }: ChatBubbleProps) {
               }
         }
       >
-        <div className="whitespace-pre-wrap break-words chat-content">
-          {formatContent(message.content)}
-        </div>
+        {isUser ? (
+          <div className="whitespace-pre-wrap break-words">{message.content}</div>
+        ) : (
+          <div
+            className="break-words chat-markdown"
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function formatContent(content: string): string {
-  // Basic formatting: keep as-is, the whitespace-pre-wrap handles newlines
-  return content;
+function renderMarkdown(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      // Headers
+      if (line.startsWith("### ")) return `<h4 class="chat-h4">${inline(line.slice(4))}</h4>`;
+      if (line.startsWith("## ")) return `<h3 class="chat-h3">${inline(line.slice(3))}</h3>`;
+      if (line.startsWith("# ")) return `<h3 class="chat-h3">${inline(line.slice(2))}</h3>`;
+
+      // Bullet lists
+      if (line.startsWith("- ") || line.startsWith("* "))
+        return `<li class="chat-li">${inline(line.slice(2))}</li>`;
+
+      // Numbered lists
+      const numMatch = line.match(/^\d+\.\s(.*)/);
+      if (numMatch) return `<li class="chat-li-num">${inline(numMatch[1])}</li>`;
+
+      // Empty line → paragraph break
+      if (line.trim() === "") return "<br/>";
+
+      // Regular paragraph
+      return `<p class="chat-p">${inline(line)}</p>`;
+    })
+    .join("");
+}
+
+function inline(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code class="chat-code">$1</code>');
 }
