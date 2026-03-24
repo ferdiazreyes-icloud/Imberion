@@ -85,38 +85,6 @@
   --divider-gradient: linear-gradient(90deg, transparent, var(--border-primary), transparent);
 }
 
-[data-theme="dark"] {
-  --bg-primary: #0F1A21;
-  --bg-secondary: #162028;
-  --bg-tertiary: #1B2A33;
-  --bg-sidebar: #0B1318;
-  --border-primary: #2A3A44;
-  --border-secondary: #1F2F38;
-  --text-primary: #E8EBED;
-  --text-secondary: #A0A8AE;
-  --text-tertiary: #6B757C;
-  --text-inverse: #1B2A33;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
-  --card-hover: 0 8px 24px rgba(0, 0, 0, 0.3);
-  --table-header-bg: #1B2A33;
-  --table-row-hover: #1F2F38;
-  --input-bg: #1B2A33;
-  --input-border: #2A3A44;
-  --accent-light: rgba(166, 25, 46, 0.15);
-  --positive-bg: rgba(5, 150, 105, 0.15);
-  --negative-bg: rgba(220, 38, 38, 0.15);
-  --warning-bg: rgba(217, 119, 6, 0.15);
-
-  /* Glassmorphism (dark) */
-  --glass-bg: rgba(22, 32, 40, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.06);
-  --gradient-card: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(78,121,167,0.06) 100%);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.2);
-  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.2), 0 12px 32px rgba(0, 0, 0, 0.35);
-  --shadow-glow-red: 0 0 24px rgba(166, 25, 46, 0.25);
-}
 
 /* ===== BASE STYLES ===== */
 

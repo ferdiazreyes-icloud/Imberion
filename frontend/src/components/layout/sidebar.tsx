@@ -3,15 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/hooks/useTheme";
 import {
   LayoutDashboard,
   History,
   FlaskConical,
   Lightbulb,
   ArrowLeftRight,
-  Sun,
-  Moon,
 } from "lucide-react";
 
 const navItems = [
@@ -24,7 +21,6 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { theme, toggleTheme } = useTheme();
 
   return (
     <aside
@@ -81,17 +77,6 @@ export function Sidebar() {
           );
         })}
       </nav>
-
-      {/* Theme Toggle */}
-      <div className="px-4 py-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        <button
-          onClick={toggleTheme}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/50 transition-colors hover:text-white hover:bg-white/5"
-        >
-          {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
-          {theme === "light" ? "Modo oscuro" : "Modo claro"}
-        </button>
-      </div>
 
       {/* Footer */}
       <div className="px-6 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>

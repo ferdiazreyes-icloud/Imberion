@@ -1,18 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
-import { useTheme } from "@/hooks/useTheme";
-
-function ThemeApplier({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
-
-  return <>{children}</>;
-}
+import { useState } from "react";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -26,9 +15,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeApplier>
-        {children}
-      </ThemeApplier>
+      {children}
     </QueryClientProvider>
   );
 }
