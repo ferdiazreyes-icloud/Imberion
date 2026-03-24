@@ -256,48 +256,8 @@ Imberion/
 | `ChatBubble` | Burbuja de mensaje con markdown rendering (user vs assistant) | ChatPanel, Agent |
 | `ChatInput` | Textarea con auto-resize y envío con Enter | ChatPanel, Agent |
 
-### 2.4 Arquitectura del Agente AI (LangGraph)
+### 2.4 Agente AI Conversacional
 
-```
-                        ┌─────────────────────┐
-          Mensaje  ───► │   Orchestrator       │
-          + contexto    │   (Claude Sonnet 4)  │
-          de página     │                      │
-                        │   Clasifica intent:  │
-                        │   simple / deep /    │
-                        │   direct             │
-                        └─────┬───────┬────────┘
-                              │       │
-                  ┌───────────┘       └───────────┐
-                  ▼                               ▼
-        ┌─────────────────┐             ┌─────────────────┐
-        │  Tool Executor   │             │  Direct Response │
-        │  (Sonnet — fast) │             │  (Sonnet)        │
-        │                  │             │  Saludos,        │
-        │  7 Tools:        │             │  off-topic       │
-        │  - get_kpis      │             └────────┬────────┘
-        │  - get_revenue   │                      │
-        │  - get_trends    │                      ▼ END
-        │  - get_elasticity│
-        │  - simulate      │
-        │  - get_recs      │
-        │  - get_passthru  │
-        └────────┬─────────┘
-                 │
-        route="simple"           route="deep"
-            │                        │
-            ▼                        ▼
-  ┌─────────────────┐    ┌─────────────────┐
-  │   Synthesizer    │    │  Deep Analyst    │
-  │   (Sonnet)       │    │  (Claude Opus 4) │
-  │                  │    │                  │
-  │   Formatea       │    │  Análisis causal │
-  │   respuesta      │    │  estratégico     │
-  │   final          │    │  correlaciones   │
-  └────────┬─────────┘    └────────┬─────────┘
-           │                       │
-           ▼                       ▼
-          END                 Synthesizer → END
-```
+Arquitectura multi-modelo con LangGraph: 4 nodos (Orchestrator, Tool Executor, Deep Analyst, Synthesizer), 7 herramientas read-only, SSE streaming, y contexto de página.
 
-**Flujo de datos:** El frontend envía `{messages, context}` donde `context` incluye la página actual (`/simulator`, `/history`, etc.), los filtros activos, y un resumen de lo que ve el usuario. El agente usa este contexto para dar respuestas relevantes.
+**Ver [08-ai-agent-architecture.md](08-ai-agent-architecture.md) para la especificación completa:** diagrama de flujo, definición de cada tool con input/output, system prompts, contrato SSE, componentes frontend, y restricciones de seguridad.
