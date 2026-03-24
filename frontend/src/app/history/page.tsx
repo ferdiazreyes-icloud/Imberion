@@ -1,19 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  ScatterChart, Scatter, Legend,
-} from "recharts";
+import { BaseChart } from "@/components/charts/base-chart";
+import { EDITORIAL_COLORS, fmtM, fmtN, fmtCurrency } from "@/lib/echarts-theme";
 import { GlobalFilters } from "@/components/filters/global-filters";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ConfidenceDot } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { useFilters } from "@/hooks/useFilters";
 import { getElasticities, getTrends, getPriceVolume } from "@/lib/api";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import { CHART_COLORS, tooltipStyle, axisTickStyle, gridStyle } from "@/lib/chart-theme";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type EOption = Record<string, any>;
 
 export default function HistoryPage() {
   const { getActiveParams, setFilter } = useFilters();
@@ -35,11 +35,205 @@ export default function HistoryPage() {
     queryFn: () => getPriceVolume(params),
   });
 
+  /* ── Trend Chart: Area + Bold line with gradient fill ── */
+  const trendOption = useMemo<EOption>(() => {
+    const rows = trends?.data || [];
+
+    return {
+      tooltip: {
+        trigger: "axis",
+        formatter: (params: any) => {
+          const p = params as any[];
+          let html = `<strong>${p[0]?.axisValue}</strong>`;
+          p.forEach((s: any) => {
+            const val = s.seriesName === "Volumen" ? fmtN(s.value) : fmtCurrency(s.value);
+            html += `<br/><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${s.color};margin-right:6px;"></span>${s.seriesName}: <strong>${val}</strong>`;
+          });
+          return html;
+        },
+      },
+      legend: {
+        bottom: 0,
+        icon: "circle",
+        itemWidth: 8,
+        itemHeight: 8,
+        textStyle: { color: EDITORIAL_COLORS.textMuted, fontSize: 11 },
+      },
+      grid: { left: 12, right: 80, top: 24, bottom: 40, containLabel: true },
+      xAxis: {
+        type: "category",
+        data: rows.map((r: any) => r.period),
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: EDITORIAL_COLORS.textLight, fontSize: 10 },
+      },
+      yAxis: [
+        {
+          type: "value",
+          axisLabel: { formatter: (v: number) => `$${v.toFixed(0)}`, color: EDITORIAL_COLORS.textLight, fontSize: 10 },
+          splitLine: { show: false },
+          axisLine: { show: false },
+          axisTick: { show: false },
+        },
+        {
+          type: "value",
+          axisLabel: { formatter: (v: number) => fmtN(v), color: EDITORIAL_COLORS.textLight, fontSize: 10 },
+          splitLine: { show: false },
+          axisLine: { show: false },
+          axisTick: { show: false },
+        },
+      ],
+      series: [
+        {
+          name: "Precio Neto",
+          type: "line",
+          yAxisIndex: 0,
+          data: rows.map((r: any) => r.net_price),
+          symbol: "none",
+          lineStyle: { width: 3.5, color: EDITORIAL_COLORS.navy },
+          itemStyle: { color: EDITORIAL_COLORS.navy },
+          areaStyle: {
+            color: {
+              type: "linear",
+              x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: "rgba(43,76,126,0.18)" },
+                { offset: 1, color: "rgba(43,76,126,0.01)" },
+              ],
+            },
+          },
+          endLabel: {
+            show: true,
+            formatter: (p: any) => `$${Number(p.value).toFixed(0)}`,
+            fontSize: 13,
+            fontWeight: 700,
+            color: EDITORIAL_COLORS.navy,
+            fontFamily: "'Inter', sans-serif",
+          },
+          smooth: 0.3,
+        },
+        {
+          name: "Precio Lista",
+          type: "line",
+          yAxisIndex: 0,
+          data: rows.map((r: any) => r.list_price),
+          symbol: "none",
+          lineStyle: { width: 1.5, type: "dashed", color: EDITORIAL_COLORS.gray },
+          itemStyle: { color: EDITORIAL_COLORS.gray },
+          endLabel: {
+            show: true,
+            formatter: (p: any) => `$${Number(p.value).toFixed(0)}`,
+            fontSize: 11,
+            color: EDITORIAL_COLORS.gray,
+          },
+          smooth: 0.3,
+        },
+        {
+          name: "Volumen",
+          type: "line",
+          yAxisIndex: 1,
+          data: rows.map((r: any) => r.volume),
+          symbol: "none",
+          lineStyle: { width: 3.5, color: EDITORIAL_COLORS.coral },
+          itemStyle: { color: EDITORIAL_COLORS.coral },
+          areaStyle: {
+            color: {
+              type: "linear",
+              x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: "rgba(216,90,74,0.15)" },
+                { offset: 1, color: "rgba(216,90,74,0.01)" },
+              ],
+            },
+          },
+          endLabel: {
+            show: true,
+            formatter: (p: any) => fmtN(Number(p.value)),
+            fontSize: 13,
+            fontWeight: 700,
+            color: EDITORIAL_COLORS.coral,
+            fontFamily: "'Inter', sans-serif",
+          },
+          smooth: 0.3,
+        },
+      ],
+    };
+  }, [trends]);
+
+  /* ── Scatter: Bubble chart — axes auto-fit to data range ── */
+  const scatterOption = useMemo<EOption>(() => {
+    const raw = priceVolume || [];
+    if (raw.length === 0) return {};
+
+    const prices = raw.map((r: any) => r.avg_price);
+    const volumes = raw.map((r: any) => r.total_volume);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const minVol = Math.min(...volumes);
+    const maxVol = Math.max(...volumes);
+    const pricePad = (maxPrice - minPrice) * 0.15 || 10;
+    const volPad = (maxVol - minVol) * 0.15 || 1000;
+
+    return {
+      tooltip: {
+        trigger: "item",
+        formatter: (p: any) =>
+          `<strong>Precio:</strong> $${Number(p.value[0]).toFixed(0)}<br/><strong>Volumen:</strong> ${fmtN(p.value[1])}`,
+      },
+      grid: { left: 12, right: 24, top: 24, bottom: 36, containLabel: true },
+      xAxis: {
+        type: "value",
+        name: "Precio Promedio",
+        nameLocation: "center",
+        nameGap: 28,
+        nameTextStyle: { color: EDITORIAL_COLORS.textMuted, fontSize: 11 },
+        min: Math.floor(minPrice - pricePad),
+        max: Math.ceil(maxPrice + pricePad),
+        axisLabel: { formatter: (v: number) => `$${v.toFixed(0)}`, color: EDITORIAL_COLORS.textLight, fontSize: 10 },
+        splitLine: { lineStyle: { color: EDITORIAL_COLORS.border, type: "dashed" } },
+        axisLine: { show: false },
+        axisTick: { show: false },
+      },
+      yAxis: {
+        type: "value",
+        name: "Volumen",
+        nameLocation: "center",
+        nameGap: 50,
+        nameTextStyle: { color: EDITORIAL_COLORS.textMuted, fontSize: 11 },
+        min: Math.floor(minVol - volPad),
+        max: Math.ceil(maxVol + volPad),
+        axisLabel: { formatter: (v: number) => fmtN(v), color: EDITORIAL_COLORS.textLight, fontSize: 10 },
+        splitLine: { lineStyle: { color: EDITORIAL_COLORS.border, type: "dashed" } },
+        axisLine: { show: false },
+        axisTick: { show: false },
+      },
+      series: [
+        {
+          type: "scatter",
+          data: raw.map((r: any) => [r.avg_price, r.total_volume]),
+          symbolSize: (val: number[]) => {
+            const norm = (val[1] - minVol) / (maxVol - minVol || 1);
+            return Math.max(12, norm * 35 + 12);
+          },
+          itemStyle: {
+            color: EDITORIAL_COLORS.coral,
+            opacity: 0.6,
+            borderColor: EDITORIAL_COLORS.coral,
+            borderWidth: 1.5,
+          },
+          emphasis: {
+            itemStyle: { opacity: 1, shadowBlur: 10, shadowColor: "rgba(216,90,74,0.3)" },
+          },
+        },
+      ],
+    };
+  }, [priceVolume]);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="animate-fade-in">
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Historial y Elasticidades</h1>
-        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Lectura backward-looking de precios, volumen y elasticidades</p>
+        <h1 className="section-title text-2xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>Historial y Elasticidades</h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--text-tertiary)" }}>Lectura backward-looking de precios, volumen y elasticidades</p>
       </div>
 
       <GlobalFilters />
@@ -83,19 +277,7 @@ export default function HistoryPage() {
             <CardTitle>Tendencia Precio Neto y Volumen — {trends?.node_label || "Cargando..."}</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <LineChart data={trends?.data || []}>
-                <CartesianGrid {...gridStyle} />
-                <XAxis dataKey="period" tick={axisTickStyle} />
-                <YAxis yAxisId="left" tick={axisTickStyle} tickFormatter={(v) => `$${(v).toFixed(0)}`} />
-                <YAxis yAxisId="right" orientation="right" tick={axisTickStyle} tickFormatter={(v) => formatNumber(v)} />
-                <Tooltip {...tooltipStyle} />
-                <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="net_price" stroke={CHART_COLORS.netPrice} name="Precio Neto" strokeWidth={2.5} dot={false} />
-                <Line yAxisId="left" type="monotone" dataKey="list_price" stroke={CHART_COLORS.listPrice} name="Precio Lista" strokeWidth={1.5} strokeDasharray="5 5" dot={false} />
-                <Line yAxisId="right" type="monotone" dataKey="volume" stroke={CHART_COLORS.volume} name="Volumen" strokeWidth={2.5} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+            <BaseChart option={trendOption} height={350} />
           </CardContent>
         </Card>
 
@@ -104,15 +286,7 @@ export default function HistoryPage() {
             <CardTitle>Precio vs Volumen (Elasticidad Visual)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <ScatterChart>
-                <CartesianGrid {...gridStyle} />
-                <XAxis dataKey="avg_price" name="Precio" tick={axisTickStyle} tickFormatter={(v) => `$${v.toFixed(0)}`} />
-                <YAxis dataKey="total_volume" name="Volumen" tick={axisTickStyle} tickFormatter={(v) => formatNumber(v)} />
-                <Tooltip {...tooltipStyle} cursor={{ strokeDasharray: "3 3" }} />
-                <Scatter data={priceVolume || []} fill={CHART_COLORS.secondary} fillOpacity={0.7} />
-              </ScatterChart>
-            </ResponsiveContainer>
+            <BaseChart option={scatterOption} height={300} />
           </CardContent>
         </Card>
 
@@ -122,27 +296,25 @@ export default function HistoryPage() {
           </CardHeader>
           <CardContent>
             <div className="max-h-[300px] overflow-auto">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0" style={{ background: "var(--table-header-bg)" }}>
+              <table className="w-full text-[13px]">
+                <thead className="sticky top-0" style={{ background: "var(--bg-secondary)" }}>
                   <tr style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                    <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Nodo</th>
-                    <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Coeficiente</th>
-                    <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>R²</th>
-                    <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Confianza</th>
-                    <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Muestra</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Nodo</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Coeficiente</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>R²</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Confianza</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Muestra</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(elasticities || []).slice(0, 30).map((e) => (
-                    <tr key={e.id} className="transition-colors" style={{ borderBottom: "1px solid var(--border-secondary)" }}
-                      onMouseEnter={(ev) => ev.currentTarget.style.background = "var(--table-row-hover)"}
-                      onMouseLeave={(ev) => ev.currentTarget.style.background = "transparent"}
+                    <tr key={e.id} className="table-row-interactive" style={{ borderBottom: "1px solid var(--border-secondary)" }}
                     >
-                      <td className="py-2 font-medium" style={{ color: "var(--text-primary)" }}>{e.node_type} #{e.node_id}</td>
-                      <td className="py-2 font-mono" style={{ color: "var(--text-primary)" }}>{e.coefficient.toFixed(3)}</td>
-                      <td className="py-2" style={{ color: "var(--text-secondary)" }}>{e.r_squared.toFixed(3)}</td>
-                      <td className="py-2"><Badge variant={e.confidence_level}>{e.confidence_level}</Badge></td>
-                      <td className="py-2" style={{ color: "var(--text-tertiary)" }}>{e.sample_size}</td>
+                      <td className="px-3 py-2.5 font-medium" style={{ color: "var(--text-primary)" }}>{e.node_type} #{e.node_id}</td>
+                      <td className="px-3 py-2.5" style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>{e.coefficient.toFixed(3)}</td>
+                      <td className="px-3 py-2.5" style={{ color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>{e.r_squared.toFixed(3)}</td>
+                      <td className="px-3 py-2.5"><ConfidenceDot level={e.confidence_level} /></td>
+                      <td className="px-3 py-2.5" style={{ color: "var(--text-tertiary)" }}>{e.sample_size}</td>
                     </tr>
                   ))}
                 </tbody>

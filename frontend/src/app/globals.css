@@ -57,6 +57,32 @@
   --negative-bg: rgba(220, 38, 38, 0.08);
   --warning: #D97706;
   --warning-bg: rgba(217, 119, 6, 0.08);
+
+  /* Gradients */
+  --gradient-card: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(78,121,167,0.03) 100%);
+  --gradient-accent: linear-gradient(135deg, #A6192E 0%, #C94455 100%);
+  --gradient-sidebar: linear-gradient(180deg, #0F1A21 0%, #1B2A33 50%, #0F1A21 100%);
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.25);
+  --glass-blur: blur(12px);
+
+  /* Enhanced Shadows */
+  --shadow-card: 0 1px 3px rgba(27, 42, 51, 0.04), 0 4px 12px rgba(27, 42, 51, 0.06);
+  --shadow-card-hover: 0 4px 12px rgba(27, 42, 51, 0.08), 0 12px 32px rgba(27, 42, 51, 0.12);
+  --shadow-glow-red: 0 0 20px rgba(166, 25, 46, 0.15);
+
+  /* KPI Accent Stripes */
+  --kpi-stripe-1: #4E79A7;
+  --kpi-stripe-2: #59A14F;
+  --kpi-stripe-3: #F28E2B;
+  --kpi-stripe-4: #76B7B2;
+  --kpi-stripe-5: #EDC948;
+  --kpi-stripe-6: #E15759;
+
+  /* Dividers */
+  --divider-gradient: linear-gradient(90deg, transparent, var(--border-primary), transparent);
 }
 
 [data-theme="dark"] {
@@ -82,6 +108,14 @@
   --positive-bg: rgba(5, 150, 105, 0.15);
   --negative-bg: rgba(220, 38, 38, 0.15);
   --warning-bg: rgba(217, 119, 6, 0.15);
+
+  /* Glassmorphism (dark) */
+  --glass-bg: rgba(22, 32, 40, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --gradient-card: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(78,121,167,0.06) 100%);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.2), 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-glow-red: 0 0 24px rgba(166, 25, 46, 0.25);
 }
 
 /* ===== BASE STYLES ===== */
@@ -133,6 +167,11 @@ body {
   100% { background-position: 200% 0; }
 }
 
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 .animate-fade-in-up {
   animation: fadeInUp 0.5s ease-out forwards;
   opacity: 0;
@@ -152,6 +191,11 @@ body {
   animation: countUp 0.6s ease-out forwards;
 }
 
+.animate-scale-in {
+  animation: scaleIn 0.35s ease-out forwards;
+  opacity: 0;
+}
+
 /* Staggered delays for children */
 .stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
 .stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
@@ -163,6 +207,60 @@ body {
 .stagger-children > *:nth-child(8) { animation-delay: 0.4s; }
 .stagger-children > *:nth-child(9) { animation-delay: 0.45s; }
 .stagger-children > *:nth-child(10) { animation-delay: 0.5s; }
+
+/* Section title with red accent bar */
+.section-title {
+  position: relative;
+  padding-left: 14px;
+}
+.section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--gradient-accent);
+}
+
+/* Card interactive (CSS-only hover) */
+.card-interactive {
+  transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+}
+.card-interactive:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+/* Table row interactive */
+.table-row-interactive {
+  transition: background 0.15s ease, border-left-color 0.15s ease;
+  border-left: 3px solid transparent;
+}
+.table-row-interactive:hover {
+  background: var(--table-row-hover);
+  border-left-color: var(--usg-red);
+}
+
+/* Button hover effect */
+.btn-hover {
+  transition: all 0.2s ease;
+}
+.btn-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(166, 25, 46, 0.3);
+}
+.btn-hover:active {
+  transform: translateY(0);
+}
+
+/* Glassmorphism fallback */
+@supports not (backdrop-filter: blur(12px)) {
+  .glass-fallback {
+    background: var(--bg-secondary) !important;
+  }
+}
 
 /* Loading skeleton */
 .skeleton {
@@ -211,12 +309,15 @@ body {
 }
 
 .recharts-tooltip-wrapper .recharts-default-tooltip {
-  background: var(--bg-secondary) !important;
-  border: 1px solid var(--border-primary) !important;
-  border-radius: 8px !important;
-  box-shadow: var(--shadow-md) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
   font-family: 'Inter', sans-serif !important;
   font-size: 12px !important;
+  padding: 12px 16px !important;
 }
 
 .recharts-tooltip-label {

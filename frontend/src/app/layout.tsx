@@ -16,10 +16,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="flex h-screen">
             <Sidebar />
             <main
-              className="flex-1 overflow-auto p-6"
+              className="flex-1 overflow-auto px-8 py-6"
               style={{ background: "var(--bg-primary)" }}
             >
-              {children}
+              <div className="mx-auto max-w-[1600px]">
+                {children}
+              </div>
             </main>
           </div>
         </Providers>

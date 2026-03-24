@@ -34,8 +34,11 @@ export function GlobalFilters() {
     <div
       className="flex flex-wrap items-end gap-3 rounded-xl p-4 animate-fade-in"
       style={{
-        background: "var(--bg-secondary)",
-        border: "1px solid var(--border-primary)",
+        background: "var(--glass-bg)",
+        backdropFilter: "var(--glass-blur)",
+        WebkitBackdropFilter: "var(--glass-blur)",
+        border: "1px solid var(--glass-border)",
+        borderTop: "2px solid var(--usg-red)",
       }}
     >
       <ComboBox
@@ -68,7 +71,7 @@ export function GlobalFilters() {
       />
       <button
         onClick={clearFilters}
-        className="rounded-lg border px-3 py-2 text-xs font-medium transition-colors hover:opacity-80"
+        className="rounded-lg border px-3 py-2 text-xs font-medium transition-all duration-200 hover:border-[var(--usg-red)] hover:text-[var(--usg-red)]"
         style={{
           borderColor: "var(--border-primary)",
           color: "var(--text-secondary)",

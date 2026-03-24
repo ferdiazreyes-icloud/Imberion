@@ -10,6 +10,7 @@ interface KPICardProps {
   unit?: string;
   change_pct?: number;
   icon?: React.ReactNode;
+  accentColor?: string;
 }
 
 function useCountUp(target: number, duration = 1200) {
@@ -60,39 +61,40 @@ function getUnitLabel(value: number, unit?: string): string | null {
   return unit;
 }
 
-export function KPICard({ label, value, unit, change_pct, icon }: KPICardProps) {
+export function KPICard({ label, value, unit, change_pct, icon, accentColor }: KPICardProps) {
   const animatedValue = useCountUp(value);
   const displayValue = formatCompact(animatedValue, unit);
   const unitLabel = getUnitLabel(value, unit);
+  const accent = accentColor || "var(--usg-red)";
 
   return (
-    <Card className="p-5 animate-fade-in-up overflow-hidden">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-medium truncate" style={{ color: "var(--text-tertiary)" }}>{label}</p>
-        {icon && <span style={{ color: "var(--text-tertiary)" }}>{icon}</span>}
+    <div className="p-4 animate-fade-in-up flex flex-col justify-between h-full">
+      <div className="flex items-center gap-1.5">
+        <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: accent }} />
+        <p className="text-[10px] sm:text-[11px] font-medium leading-tight" style={{ color: "var(--text-tertiary)" }}>{label}</p>
       </div>
-      <div className="mt-2 flex items-baseline gap-1.5 min-w-0">
-        <p className="text-2xl font-bold truncate animate-count-up" style={{ color: "var(--text-primary)" }}>
+      <div className="mt-auto pt-2 flex items-baseline gap-1 min-w-0">
+        <p className="text-lg sm:text-xl lg:text-2xl font-bold animate-count-up leading-none" style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
           {displayValue}
         </p>
         {unitLabel && (
-          <span className="text-xs font-medium shrink-0" style={{ color: "var(--text-tertiary)" }}>{unitLabel}</span>
+          <span className="text-[10px] sm:text-xs font-medium shrink-0" style={{ color: "var(--text-tertiary)" }}>{unitLabel}</span>
         )}
       </div>
       {change_pct !== undefined && change_pct !== null && (
         <div className="mt-2 flex items-center gap-1.5">
           <span
-            className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold shrink-0"
+            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0"
             style={{
               background: change_pct >= 0 ? "var(--positive-bg)" : "var(--negative-bg)",
               color: change_pct >= 0 ? "var(--positive)" : "var(--negative)",
             }}
           >
-            {change_pct >= 0 ? "+" : ""}{change_pct.toFixed(1)}%
+            {change_pct >= 0 ? "▲" : "▼"} {change_pct >= 0 ? "+" : ""}{change_pct.toFixed(1)}%
           </span>
           <span className="text-xs truncate" style={{ color: "var(--text-tertiary)" }}>vs anterior</span>
         </div>
       )}
-    </Card>
+    </div>
   );
 }

@@ -95,14 +95,16 @@ export function ComboBox({ label, options, value, onChange, placeholder = "Todos
   const dropdown = open ? createPortal(
     <div
       ref={dropdownRef}
-      className="fixed max-h-60 overflow-auto rounded-lg border shadow-lg"
+      className="fixed max-h-60 overflow-auto rounded-xl border shadow-lg"
       style={{
         top: pos.top,
         left: pos.left,
         width: pos.width,
         zIndex: 9999,
-        background: "var(--bg-primary)",
-        borderColor: "var(--border-primary)",
+        background: "var(--glass-bg)",
+        backdropFilter: "var(--glass-blur)",
+        WebkitBackdropFilter: "var(--glass-blur)",
+        borderColor: "var(--glass-border)",
       }}
     >
       {/* Clear all / Todos option */}
@@ -158,11 +160,13 @@ export function ComboBox({ label, options, value, onChange, placeholder = "Todos
       )}
       <div
         ref={triggerRef}
-        className="flex flex-wrap items-center gap-1 rounded-lg border px-2 py-1.5 transition-colors cursor-pointer"
+        className="flex flex-wrap items-center gap-1 rounded-lg border px-2 py-1.5 cursor-pointer"
         style={{
           background: "var(--input-bg)",
-          borderColor: open ? "var(--accent-primary)" : "var(--input-border)",
+          borderColor: open ? "var(--usg-red)" : "var(--input-border)",
+          boxShadow: open ? "0 0 0 3px rgba(166, 25, 46, 0.1)" : "none",
           minHeight: 38,
+          transition: "border-color 0.2s ease, box-shadow 0.2s ease",
         }}
         onClick={() => {
           setOpen(true);
