@@ -1,14 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Legend, ReferenceLine, Line, BarChart, Bar,
-} from "recharts";
 import { GlobalFilters } from "@/components/filters/global-filters";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, ConfidenceDot } from "@/components/ui/badge";
 import { useFilters } from "@/hooks/useFilters";
 import {
   quickSimulate, getScenarios, createScenario, getScenarioResults,
@@ -17,8 +13,12 @@ import {
   getScenarioTemplateUrl, uploadScenarioExcel, createOptimizedScenario,
 } from "@/lib/api";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
-import { CHART_COLORS, TABLEAU_PALETTE, tooltipStyle, axisTickStyle, gridStyle } from "@/lib/chart-theme";
+import { BaseChart } from "@/components/charts/base-chart";
+import { EDITORIAL_COLORS, fmtM, fmtN, fmtCurrency } from "@/lib/echarts-theme";
 import type { ScenarioCompareItem, GroupedResult } from "@/lib/types";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type EOption = Record<string, any>;
 
 // ---------------------------------------------------------------------------
 // Tab types
@@ -134,10 +134,10 @@ export default function SimulatorPage() {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="animate-fade-in">
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Simulador de Precios</h1>
-        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Modela escenarios predictivos de cambio de precio</p>
+        <h1 className="section-title text-2xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>Simulador de Precios</h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--text-tertiary)" }}>Modela escenarios predictivos de cambio de precio</p>
       </div>
 
       <GlobalFilters />
@@ -154,10 +154,11 @@ export default function SimulatorPage() {
           <button
             key={tab}
             onClick={() => setMainTab(tab)}
-            className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+            className="rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 btn-hover"
             style={{
-              background: mainTab === tab ? "var(--usg-red)" : "var(--bg-tertiary)",
+              background: mainTab === tab ? "var(--gradient-accent)" : "var(--bg-tertiary)",
               color: mainTab === tab ? "#fff" : "var(--text-secondary)",
+              boxShadow: mainTab === tab ? "0 4px 12px rgba(166, 25, 46, 0.3)" : "none",
             }}
           >
             {label}
@@ -221,10 +222,8 @@ export default function SimulatorPage() {
                   <button
                     onClick={handleCreateScenario}
                     disabled={!scenarioName || createMutation.isPending}
-                    className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
-                    style={{ background: "var(--usg-red)" }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = "var(--usg-red-dark)"}
-                    onMouseLeave={(e) => e.currentTarget.style.background = "var(--usg-red)"}
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-white btn-hover disabled:opacity-50"
+                    style={{ background: "var(--gradient-accent)" }}
                   >
                     {createMutation.isPending ? "Guardando..." : "Guardar Escenario"}
                   </button>
@@ -241,38 +240,8 @@ export default function SimulatorPage() {
           </Card>
 
           {/* Curve chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Curva Precio-Volumen-Margen</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <AreaChart data={curve}>
-                  <CartesianGrid {...gridStyle} />
-                  <XAxis dataKey="price_change_pct" tick={axisTickStyle} tickFormatter={(v) => `${v}%`} />
-                  <YAxis yAxisId="left" tick={axisTickStyle} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
-                  <YAxis yAxisId="right" orientation="right" tick={axisTickStyle} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
-                  <Tooltip {...tooltipStyle} formatter={(v, name) => [formatCurrency(Number(v)), String(name)]} labelFormatter={(v) => `Cambio: ${v}%`} />
-                  <Legend />
-                  <ReferenceLine x={0} stroke="var(--text-tertiary)" strokeDasharray="3 3" label="Base" />
-                  <ReferenceLine x={priceChange} stroke="var(--usg-red)" strokeWidth={2} label={`${priceChange}%`} />
-                  <defs>
-                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={CHART_COLORS.revenue} stopOpacity={0.2} />
-                      <stop offset="100%" stopColor={CHART_COLORS.revenue} stopOpacity={0.02} />
-                    </linearGradient>
-                    <linearGradient id="marginGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={CHART_COLORS.margin} stopOpacity={0.2} />
-                      <stop offset="100%" stopColor={CHART_COLORS.margin} stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <Area yAxisId="left" type="monotone" dataKey="revenue" stroke={CHART_COLORS.revenue} fill="url(#revenueGrad)" name="Ingreso" strokeWidth={2} />
-                  <Area yAxisId="right" type="monotone" dataKey="margin" stroke={CHART_COLORS.margin} fill="url(#marginGrad)" name="Margen" strokeWidth={2} />
-                  <Line yAxisId="left" type="monotone" dataKey="volume" stroke={CHART_COLORS.warning} name="Volumen" strokeWidth={2} dot={false} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <CurveChart curve={curve} priceChange={priceChange} />
+
 
           {/* Scenarios list + Results */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -330,9 +299,9 @@ export default function SimulatorPage() {
                     {/* Summary KPIs */}
                     {scenarioSummary && (
                       <div className="grid grid-cols-3 gap-3">
-                        <SummaryKPI label="Volumen" value={formatNumber(scenarioSummary.total_volume)} delta={formatPercent(scenarioSummary.delta_volume_pct)} positive={scenarioSummary.delta_volume_pct >= 0} />
-                        <SummaryKPI label="Ingreso" value={formatCurrency(scenarioSummary.total_revenue)} delta={formatPercent(scenarioSummary.delta_revenue_pct)} positive={scenarioSummary.delta_revenue_pct >= 0} />
-                        <SummaryKPI label="Margen" value={formatCurrency(scenarioSummary.total_margin)} delta={formatPercent(scenarioSummary.delta_margin_pct)} positive={scenarioSummary.delta_margin_pct >= 0} />
+                        <SummaryKPI label="Volumen" value={fmtN(scenarioSummary.total_volume)} delta={formatPercent(scenarioSummary.delta_volume_pct)} positive={scenarioSummary.delta_volume_pct >= 0} />
+                        <SummaryKPI label="Ingreso" value={fmtM(scenarioSummary.total_revenue)} delta={formatPercent(scenarioSummary.delta_revenue_pct)} positive={scenarioSummary.delta_revenue_pct >= 0} />
+                        <SummaryKPI label="Margen" value={fmtM(scenarioSummary.total_margin)} delta={formatPercent(scenarioSummary.delta_margin_pct)} positive={scenarioSummary.delta_margin_pct >= 0} />
                       </div>
                     )}
 
@@ -361,50 +330,38 @@ export default function SimulatorPage() {
 
                     {/* Portfolio view — summary by_category chart */}
                     {resultTab === "portfolio" && scenarioSummary && (
-                      <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={scenarioSummary.by_category}>
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="name" tick={{ ...axisTickStyle, fontSize: 10 }} angle={-25} textAnchor="end" height={60} />
-                          <YAxis tick={axisTickStyle} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
-                          <Tooltip {...tooltipStyle} formatter={(v, name) => [formatCurrency(Number(v)), String(name)]} />
-                          <Legend />
-                          <Bar dataKey="total_revenue" name="Ingreso" fill={CHART_COLORS.revenue} radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="total_margin" name="Margen" fill={CHART_COLORS.margin} radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                      <PortfolioChart byCategory={scenarioSummary.by_category} />
                     )}
 
                     {/* Grouped results table (category, segment, territory) */}
                     {groupByParam && groupedResults && (
                       <div className="max-h-[300px] overflow-auto">
-                        <table className="w-full text-sm">
-                          <thead className="sticky top-0" style={{ background: "var(--table-header-bg)" }}>
+                        <table className="w-full text-[13px]">
+                          <thead className="sticky top-0" style={{ background: "var(--bg-secondary)" }}>
                             <tr style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                              <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Grupo</th>
-                              <th className="pb-2 text-right text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Productos</th>
-                              <th className="pb-2 text-right text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Volumen</th>
-                              <th className="pb-2 text-right text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Ingreso</th>
-                              <th className="pb-2 text-right text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Margen</th>
-                              <th className="pb-2 text-right text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Cambio Prom.</th>
-                              <th className="pb-2 text-center text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Confianza</th>
+                              <th className="px-3 py-3 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Grupo</th>
+                              <th className="px-3 py-3 text-right text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Productos</th>
+                              <th className="px-3 py-3 text-right text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Volumen</th>
+                              <th className="px-3 py-3 text-right text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Ingreso</th>
+                              <th className="px-3 py-3 text-right text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Margen</th>
+                              <th className="px-3 py-3 text-right text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Cambio Prom.</th>
+                              <th className="px-3 py-3 text-center text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Confianza</th>
                             </tr>
                           </thead>
                           <tbody>
                             {groupedResults.map((g: GroupedResult) => (
                               <tr key={g.group_key} style={{ borderBottom: "1px solid var(--border-secondary)" }}
-                                className="transition-colors"
-                                onMouseEnter={(ev) => ev.currentTarget.style.background = "var(--table-row-hover)"}
-                                onMouseLeave={(ev) => ev.currentTarget.style.background = "transparent"}
+                                className="table-row-interactive"
                               >
                                 <td className="py-2 font-medium" style={{ color: "var(--text-primary)" }}>{g.group_name}</td>
                                 <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{g.product_count}</td>
-                                <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{formatNumber(g.total_volume)}</td>
-                                <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{formatCurrency(g.total_revenue)}</td>
-                                <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{formatCurrency(g.total_margin)}</td>
-                                <td className="py-2 text-right font-mono" style={{ color: g.avg_price_change_pct >= 0 ? "var(--positive)" : "var(--negative)" }}>
+                                <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{fmtN(g.total_volume)}</td>
+                                <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{fmtM(g.total_revenue)}</td>
+                                <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{fmtM(g.total_margin)}</td>
+                                <td className="py-2 text-right" style={{ color: g.avg_price_change_pct >= 0 ? "#2B4C7E" : "#D85A4A", fontVariantNumeric: "tabular-nums" }}>
                                   {formatPercent(g.avg_price_change_pct)}
                                 </td>
-                                <td className="py-2 text-center"><Badge variant={g.avg_confidence}>{g.avg_confidence}</Badge></td>
+                                <td className="py-2 text-center"><ConfidenceDot level={g.avg_confidence} /></td>
                               </tr>
                             ))}
                           </tbody>
@@ -415,31 +372,29 @@ export default function SimulatorPage() {
                     {/* SKU-level table */}
                     {resultTab === "sku" && (
                       <div className="max-h-[300px] overflow-auto">
-                        <table className="w-full text-sm">
-                          <thead className="sticky top-0" style={{ background: "var(--table-header-bg)" }}>
+                        <table className="w-full text-[13px]">
+                          <thead className="sticky top-0" style={{ background: "var(--bg-secondary)" }}>
                             <tr style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                              <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Producto</th>
-                              <th className="pb-2 text-right text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Cambio</th>
-                              <th className="pb-2 text-right text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Volumen</th>
-                              <th className="pb-2 text-right text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Ingreso</th>
-                              <th className="pb-2 text-right text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Margen</th>
-                              <th className="pb-2 text-center text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Confianza</th>
+                              <th className="px-3 py-3 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Producto</th>
+                              <th className="px-3 py-3 text-right text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Cambio</th>
+                              <th className="px-3 py-3 text-right text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Volumen</th>
+                              <th className="px-3 py-3 text-right text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Ingreso</th>
+                              <th className="px-3 py-3 text-right text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Margen</th>
+                              <th className="px-3 py-3 text-center text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Confianza</th>
                             </tr>
                           </thead>
                           <tbody>
                             {(scenarioResults || []).map((r) => (
-                              <tr key={r.id} className="transition-colors" style={{ borderBottom: "1px solid var(--border-secondary)" }}
-                                onMouseEnter={(ev) => ev.currentTarget.style.background = "var(--table-row-hover)"}
-                                onMouseLeave={(ev) => ev.currentTarget.style.background = "transparent"}
+                              <tr key={r.id} className="table-row-interactive" style={{ borderBottom: "1px solid var(--border-secondary)" }}
                               >
                                 <td className="py-2 max-w-[150px] truncate" style={{ color: "var(--text-primary)" }}>{r.product_name}</td>
-                                <td className="py-2 text-right font-mono" style={{ color: r.price_change_pct >= 0 ? "var(--positive)" : "var(--negative)" }}>
+                                <td className="py-2 text-right" style={{ color: r.price_change_pct >= 0 ? "#2B4C7E" : "#D85A4A", fontVariantNumeric: "tabular-nums" }}>
                                   {formatPercent(r.price_change_pct)}
                                 </td>
-                                <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{formatNumber(r.expected_volume)}</td>
-                                <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{formatCurrency(r.expected_revenue)}</td>
-                                <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{formatCurrency(r.expected_revenue * 0.3)}</td>
-                                <td className="py-2 text-center"><Badge variant={r.confidence_level}>{r.confidence_level}</Badge></td>
+                                <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{fmtN(r.expected_volume)}</td>
+                                <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{fmtM(r.expected_revenue)}</td>
+                                <td className="py-2 text-right" style={{ color: "var(--text-secondary)" }}>{fmtM(r.expected_revenue * 0.3)}</td>
+                                <td className="py-2 text-center"><ConfidenceDot level={r.confidence_level} /></td>
                               </tr>
                             ))}
                           </tbody>
@@ -499,21 +454,21 @@ export default function SimulatorPage() {
                   scenarioId={compareData.rankings.best_for_volume}
                   scenarios={compareData.scenarios}
                   metric="total_volume"
-                  formatter={formatNumber}
+                  formatter={fmtN}
                 />
                 <RankingCard
                   label="Mejor para Ingreso"
                   scenarioId={compareData.rankings.best_for_revenue}
                   scenarios={compareData.scenarios}
                   metric="total_revenue"
-                  formatter={formatCurrency}
+                  formatter={fmtM}
                 />
                 <RankingCard
                   label="Mejor para Margen"
                   scenarioId={compareData.rankings.best_for_margin}
                   scenarios={compareData.scenarios}
                   metric="total_margin"
-                  formatter={formatCurrency}
+                  formatter={fmtM}
                 />
               </div>
 
@@ -524,10 +479,10 @@ export default function SimulatorPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-auto">
-                    <table className="w-full text-sm">
-                      <thead>
+                    <table className="w-full text-[13px]">
+                      <thead style={{ background: "var(--bg-secondary)" }}>
                         <tr style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                          <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Métrica</th>
+                          <th className="px-3 py-3 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Métrica</th>
                           {compareData.scenarios.map((s) => (
                             <th key={s.scenario_id} className="pb-2 text-right text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
                               {s.scenario_name}
@@ -537,9 +492,9 @@ export default function SimulatorPage() {
                       </thead>
                       <tbody>
                         {([
-                          ["Volumen", "total_volume", "delta_volume_pct", formatNumber],
-                          ["Ingreso", "total_revenue", "delta_revenue_pct", formatCurrency],
-                          ["Margen", "total_margin", "delta_margin_pct", formatCurrency],
+                          ["Volumen", "total_volume", "delta_volume_pct", fmtN],
+                          ["Ingreso", "total_revenue", "delta_revenue_pct", fmtM],
+                          ["Margen", "total_margin", "delta_margin_pct", fmtM],
                         ] as [string, keyof ScenarioCompareItem, keyof ScenarioCompareItem, (n: number) => string][]).map(([label, key, deltaKey, fmt]) => (
                           <tr key={label} style={{ borderBottom: "1px solid var(--border-secondary)" }}>
                             <td className="py-3 font-medium" style={{ color: "var(--text-primary)" }}>{label}</td>
@@ -552,11 +507,11 @@ export default function SimulatorPage() {
                                 (key === "total_margin" && s.scenario_id === compareData.rankings.best_for_margin);
                               return (
                                 <td key={s.scenario_id} className="py-3 text-right" style={{
-                                  color: isBest ? "var(--positive)" : "var(--text-secondary)",
+                                  color: isBest ? "#2B4C7E" : "var(--text-secondary)",
                                   fontWeight: isBest ? 700 : 400,
                                 }}>
                                   <div>{fmt(val)}</div>
-                                  <div className="text-xs font-mono" style={{ color: delta >= 0 ? "var(--positive)" : "var(--negative)" }}>
+                                  <div className="text-xs" style={{ color: delta >= 0 ? "#2B4C7E" : "#D85A4A", fontVariantNumeric: "tabular-nums" }}>
                                     {formatPercent(delta)}
                                   </div>
                                 </td>
@@ -571,29 +526,7 @@ export default function SimulatorPage() {
               </Card>
 
               {/* Comparison bar chart */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Comparación visual</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={compareData.scenarios.map((s) => ({
-                      name: s.scenario_name.length > 15 ? s.scenario_name.slice(0, 15) + "..." : s.scenario_name,
-                      Ingreso: s.total_revenue,
-                      Margen: s.total_margin,
-                      Volumen: s.total_volume,
-                    }))}>
-                      <CartesianGrid {...gridStyle} />
-                      <XAxis dataKey="name" tick={axisTickStyle} />
-                      <YAxis tick={axisTickStyle} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
-                      <Tooltip {...tooltipStyle} formatter={(v, name) => [formatCurrency(Number(v)), String(name)]} />
-                      <Legend />
-                      <Bar dataKey="Ingreso" fill={CHART_COLORS.revenue} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Margen" fill={CHART_COLORS.margin} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+              <CompareChart scenarios={compareData.scenarios} />
             </>
           )}
 
@@ -624,10 +557,11 @@ export default function SimulatorPage() {
                   <button
                     key={val}
                     onClick={() => setBestObjective(val)}
-                    className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+                    className="rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 btn-hover"
                     style={{
-                      background: bestObjective === val ? "var(--usg-red)" : "var(--bg-tertiary)",
+                      background: bestObjective === val ? "var(--gradient-accent)" : "var(--bg-tertiary)",
                       color: bestObjective === val ? "#fff" : "var(--text-secondary)",
+                      boxShadow: bestObjective === val ? "0 4px 12px rgba(166, 25, 46, 0.3)" : "none",
                     }}
                   >
                     {label}
@@ -643,7 +577,7 @@ export default function SimulatorPage() {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <div className="flex-shrink-0 h-12 w-12 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{ background: "var(--usg-red)" }}>
+                    <div className="flex-shrink-0 h-12 w-12 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{ background: "var(--gradient-accent)", boxShadow: "var(--shadow-glow-red)" }}>
                       1
                     </div>
                     <div className="flex-1">
@@ -656,18 +590,18 @@ export default function SimulatorPage() {
                       <div className="grid grid-cols-3 gap-6">
                         <div>
                           <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Volumen</p>
-                          <p className="font-bold" style={{ color: "var(--text-primary)" }}>{formatNumber(bestData.best.total_volume)}</p>
-                          <p className="text-xs font-mono" style={{ color: bestData.best.delta_volume_pct >= 0 ? "var(--positive)" : "var(--negative)" }}>{formatPercent(bestData.best.delta_volume_pct)}</p>
+                          <p className="font-bold" style={{ color: "var(--text-primary)" }}>{fmtN(bestData.best.total_volume)}</p>
+                          <p className="text-xs" style={{ color: bestData.best.delta_volume_pct >= 0 ? "#2B4C7E" : "#D85A4A", fontVariantNumeric: "tabular-nums" }}>{formatPercent(bestData.best.delta_volume_pct)}</p>
                         </div>
                         <div>
                           <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Ingreso</p>
-                          <p className="font-bold" style={{ color: "var(--text-primary)" }}>{formatCurrency(bestData.best.total_revenue)}</p>
-                          <p className="text-xs font-mono" style={{ color: bestData.best.delta_revenue_pct >= 0 ? "var(--positive)" : "var(--negative)" }}>{formatPercent(bestData.best.delta_revenue_pct)}</p>
+                          <p className="font-bold" style={{ color: "var(--text-primary)" }}>{fmtM(bestData.best.total_revenue)}</p>
+                          <p className="text-xs" style={{ color: bestData.best.delta_revenue_pct >= 0 ? "#2B4C7E" : "#D85A4A", fontVariantNumeric: "tabular-nums" }}>{formatPercent(bestData.best.delta_revenue_pct)}</p>
                         </div>
                         <div>
                           <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Margen</p>
-                          <p className="font-bold" style={{ color: "var(--text-primary)" }}>{formatCurrency(bestData.best.total_margin)}</p>
-                          <p className="text-xs font-mono" style={{ color: bestData.best.delta_margin_pct >= 0 ? "var(--positive)" : "var(--negative)" }}>{formatPercent(bestData.best.delta_margin_pct)}</p>
+                          <p className="font-bold" style={{ color: "var(--text-primary)" }}>{fmtM(bestData.best.total_margin)}</p>
+                          <p className="text-xs" style={{ color: bestData.best.delta_margin_pct >= 0 ? "#2B4C7E" : "#D85A4A", fontVariantNumeric: "tabular-nums" }}>{formatPercent(bestData.best.delta_margin_pct)}</p>
                         </div>
                       </div>
                     </div>
@@ -694,15 +628,15 @@ export default function SimulatorPage() {
                           <div className="flex gap-6 text-right text-sm">
                             <div>
                               <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Vol.</p>
-                              <p style={{ color: "var(--text-secondary)" }}>{formatNumber(s.total_volume)}</p>
+                              <p style={{ color: "var(--text-secondary)" }}>{fmtN(s.total_volume)}</p>
                             </div>
                             <div>
                               <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Ingreso</p>
-                              <p style={{ color: "var(--text-secondary)" }}>{formatCurrency(s.total_revenue)}</p>
+                              <p style={{ color: "var(--text-secondary)" }}>{fmtM(s.total_revenue)}</p>
                             </div>
                             <div>
                               <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Margen</p>
-                              <p style={{ color: "var(--text-secondary)" }}>{formatCurrency(s.total_margin)}</p>
+                              <p style={{ color: "var(--text-secondary)" }}>{fmtM(s.total_margin)}</p>
                             </div>
                           </div>
                         </div>
@@ -849,7 +783,7 @@ export default function SimulatorPage() {
                         Sugerencias de Mejora ({(excelResult.suggestions as Array<unknown>).length})
                       </h4>
                       <div className="max-h-[300px] overflow-auto">
-                        <table className="w-full text-sm">
+                        <table className="w-full text-[13px]">
                           <thead className="sticky top-0" style={{ background: "var(--table-header-bg)" }}>
                             <tr style={{ borderBottom: "1px solid var(--border-primary)" }}>
                               <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Producto</th>
@@ -863,10 +797,10 @@ export default function SimulatorPage() {
                             {(excelResult.suggestions as Array<Record<string, unknown>>).map((s, i) => (
                               <tr key={i} style={{ borderBottom: "1px solid var(--border-secondary)" }}>
                                 <td className="py-2" style={{ color: "var(--text-primary)" }}>{String(s.product_name || `Product #${s.product_id}`)}</td>
-                                <td className="py-2 font-mono" style={{ color: "var(--text-secondary)" }}>{Number(s.planned_pct) > 0 ? "+" : ""}{String(s.planned_pct)}%</td>
-                                <td className="py-2 font-mono font-bold" style={{ color: "var(--usg-red)" }}>{Number(s.suggested_pct) > 0 ? "+" : ""}{String(s.suggested_pct)}%</td>
-                                <td className="py-2 font-mono" style={{ color: Number(s.delta_margin) >= 0 ? "var(--positive)" : "var(--negative)" }}>{formatCurrency(Number(s.delta_margin))}</td>
-                                <td className="py-2 font-mono" style={{ color: Number(s.delta_revenue) >= 0 ? "var(--positive)" : "var(--negative)" }}>{formatCurrency(Number(s.delta_revenue))}</td>
+                                <td className="py-2" style={{ color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>{Number(s.planned_pct) > 0 ? "+" : ""}{String(s.planned_pct)}%</td>
+                                <td className="py-2 font-bold" style={{ color: "var(--usg-red)", fontVariantNumeric: "tabular-nums" }}>{Number(s.suggested_pct) > 0 ? "+" : ""}{String(s.suggested_pct)}%</td>
+                                <td className="py-2" style={{ color: Number(s.delta_margin) >= 0 ? "#2B4C7E" : "#D85A4A", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(Number(s.delta_margin))}</td>
+                                <td className="py-2" style={{ color: Number(s.delta_revenue) >= 0 ? "#2B4C7E" : "#D85A4A", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(Number(s.delta_revenue))}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1032,7 +966,7 @@ export default function SimulatorPage() {
                   </div>
 
                   <div className="max-h-[400px] overflow-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-[13px]">
                       <thead className="sticky top-0" style={{ background: "var(--table-header-bg)" }}>
                         <tr style={{ borderBottom: "1px solid var(--border-primary)" }}>
                           <th className="pb-2 text-left text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>Producto</th>
@@ -1044,10 +978,10 @@ export default function SimulatorPage() {
                         {(optResult.optimization_details as Array<Record<string, unknown>>)?.map((d, i) => (
                           <tr key={i} style={{ borderBottom: "1px solid var(--border-secondary)" }}>
                             <td className="py-2" style={{ color: "var(--text-primary)" }}>Product #{String(d.product_id)}</td>
-                            <td className="py-2 text-right font-mono font-bold" style={{ color: Number(d.optimal_change_pct) >= 0 ? "var(--positive)" : "var(--negative)" }}>
+                            <td className="py-2 text-right font-bold" style={{ color: Number(d.optimal_change_pct) >= 0 ? "#2B4C7E" : "#D85A4A", fontVariantNumeric: "tabular-nums" }}>
                               {Number(d.optimal_change_pct) > 0 ? "+" : ""}{String(d.optimal_change_pct)}%
                             </td>
-                            <td className="py-2 text-right font-mono" style={{ color: "var(--text-secondary)" }}>
+                            <td className="py-2 text-right" style={{ color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>
                               {formatCurrency(Number(d.optimal_value))}
                             </td>
                           </tr>
@@ -1070,6 +1004,275 @@ export default function SimulatorPage() {
 }
 
 // ---------------------------------------------------------------------------
+// Chart wrapper components (ECharts)
+// ---------------------------------------------------------------------------
+
+function CurveChart({ curve, priceChange }: { curve: Array<Record<string, number>>; priceChange: number }) {
+  const option: EOption = useMemo(() => ({
+    grid: { containLabel: true, left: 12, right: 24, top: 48, bottom: 12 },
+    legend: { top: 0, data: ["Ingreso", "Margen", "Volumen"] },
+    tooltip: {
+      trigger: "axis",
+      formatter(params: Array<{ seriesName: string; value: number; color: string; marker: string }>) {
+        if (!Array.isArray(params) || params.length === 0) return "";
+        const idx = (params[0] as unknown as { dataIndex: number }).dataIndex;
+        const d = curve[idx];
+        if (!d) return "";
+        let html = `<div style="font-weight:700;margin-bottom:4px">Cambio: ${d.price_change_pct}%</div>`;
+        for (const p of params) {
+          html += `<div>${p.marker} ${p.seriesName}: ${fmtCurrency(p.value)}</div>`;
+        }
+        return html;
+      },
+    },
+    xAxis: {
+      type: "category",
+      data: curve.map((d) => `${d.price_change_pct}%`),
+      axisLine: { show: false },
+      axisTick: { show: false },
+    },
+    yAxis: [
+      {
+        type: "value",
+        name: "Ingreso",
+        axisLabel: { formatter: (v: number) => fmtM(v), color: EDITORIAL_COLORS.textLight, fontSize: 10 },
+        splitLine: { lineStyle: { color: EDITORIAL_COLORS.border, type: "dashed" } },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        nameTextStyle: { color: EDITORIAL_COLORS.navy, fontSize: 11 },
+      },
+      {
+        type: "value",
+        name: "Margen",
+        axisLabel: { formatter: (v: number) => fmtM(v), color: EDITORIAL_COLORS.textLight, fontSize: 10 },
+        splitLine: { show: false },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        nameTextStyle: { color: EDITORIAL_COLORS.blue, fontSize: 11 },
+      },
+      {
+        type: "value",
+        name: "Volumen",
+        show: false,
+      },
+    ],
+    series: [
+      {
+        name: "Ingreso",
+        type: "line",
+        yAxisIndex: 0,
+        smooth: 0.3,
+        symbol: "none",
+        lineStyle: { width: 3, color: EDITORIAL_COLORS.navy },
+        itemStyle: { color: EDITORIAL_COLORS.navy },
+        areaStyle: {
+          color: {
+            type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: "rgba(43,76,126,0.15)" },
+              { offset: 1, color: "rgba(43,76,126,0.01)" },
+            ],
+          },
+        },
+        data: curve.map((d) => d.revenue),
+        markLine: {
+          silent: true,
+          symbol: "none",
+          lineStyle: { type: "dashed" },
+          data: [
+            {
+              xAxis: `0%`,
+              lineStyle: { color: EDITORIAL_COLORS.textMuted },
+              label: { formatter: "Base", fontSize: 10, color: EDITORIAL_COLORS.textMuted },
+            },
+            {
+              xAxis: `${priceChange}%`,
+              lineStyle: { color: EDITORIAL_COLORS.coral, width: 2 },
+              label: { formatter: `${priceChange}%`, fontSize: 11, fontWeight: 700, color: EDITORIAL_COLORS.coral },
+            },
+          ],
+        },
+      },
+      {
+        name: "Margen",
+        type: "line",
+        yAxisIndex: 1,
+        smooth: 0.3,
+        symbol: "none",
+        lineStyle: { width: 3, color: EDITORIAL_COLORS.blue },
+        itemStyle: { color: EDITORIAL_COLORS.blue },
+        areaStyle: {
+          color: {
+            type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: "rgba(91,141,184,0.15)" },
+              { offset: 1, color: "rgba(91,141,184,0.01)" },
+            ],
+          },
+        },
+        data: curve.map((d) => d.margin),
+      },
+      {
+        name: "Volumen",
+        type: "line",
+        yAxisIndex: 2,
+        smooth: 0.3,
+        symbol: "none",
+        lineStyle: { width: 2.5, color: EDITORIAL_COLORS.coral, type: "dashed" },
+        itemStyle: { color: EDITORIAL_COLORS.coral },
+        data: curve.map((d) => d.volume),
+        endLabel: {
+          show: true,
+          formatter: (p: any) => fmtN(p.value),
+          fontSize: 11,
+          fontWeight: 600,
+          color: EDITORIAL_COLORS.coral,
+        },
+      },
+    ],
+  }), [curve, priceChange]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Curva Precio-Volumen-Margen</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <BaseChart option={option} height={400} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function PortfolioChart({ byCategory }: { byCategory: Array<{ name: string; total_revenue: number; total_margin: number }> }) {
+  const option: EOption = useMemo(() => ({
+    grid: { containLabel: true, left: 12, right: 12, top: 36, bottom: 12 },
+    legend: {
+      top: 0,
+      icon: "circle",
+      itemWidth: 8,
+      itemHeight: 8,
+      textStyle: { color: EDITORIAL_COLORS.textMuted, fontSize: 11 },
+    },
+    tooltip: {
+      trigger: "axis",
+      formatter(params: any) {
+        if (!Array.isArray(params) || params.length === 0) return "";
+        const cat = params[0]?.name || "";
+        let html = `<div style="font-weight:700;margin-bottom:4px">${cat}</div>`;
+        for (const p of params) {
+          html += `<div>${p.marker} ${p.seriesName}: ${fmtM(p.value)}</div>`;
+        }
+        return html;
+      },
+    },
+    xAxis: {
+      type: "category",
+      data: byCategory.map((d) => d.name),
+      axisLabel: { rotate: 30, fontSize: 10, color: EDITORIAL_COLORS.textLight },
+      axisLine: { show: false },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: { formatter: (v: number) => fmtM(v), color: EDITORIAL_COLORS.textLight, fontSize: 10 },
+      splitLine: { lineStyle: { color: EDITORIAL_COLORS.border, type: "dashed" } },
+      axisLine: { show: false },
+      axisTick: { show: false },
+    },
+    series: [
+      {
+        name: "Ingreso",
+        type: "bar",
+        barMaxWidth: 24,
+        itemStyle: { color: EDITORIAL_COLORS.navy, borderRadius: [3, 3, 0, 0] },
+        data: byCategory.map((d) => d.total_revenue),
+      },
+      {
+        name: "Margen",
+        type: "bar",
+        barMaxWidth: 24,
+        itemStyle: { color: EDITORIAL_COLORS.blue, borderRadius: [3, 3, 0, 0] },
+        data: byCategory.map((d) => d.total_margin),
+      },
+    ],
+  }), [byCategory]);
+
+  return <BaseChart option={option} height={280} />;
+}
+
+function CompareChart({ scenarios }: { scenarios: ScenarioCompareItem[] }) {
+  const option: EOption = useMemo(() => {
+    const names = scenarios.map((s) =>
+      s.scenario_name.length > 15 ? s.scenario_name.slice(0, 15) + "..." : s.scenario_name,
+    );
+    return {
+      grid: { containLabel: true, left: 12, right: 12, top: 36, bottom: 12 },
+      legend: {
+        top: 0,
+        icon: "circle",
+        itemWidth: 8,
+        itemHeight: 8,
+        textStyle: { color: EDITORIAL_COLORS.textMuted, fontSize: 11 },
+      },
+      tooltip: {
+        trigger: "axis",
+        formatter(params: any) {
+          if (!Array.isArray(params) || params.length === 0) return "";
+          const name = params[0]?.name || "";
+          let html = `<div style="font-weight:700;margin-bottom:4px">${name}</div>`;
+          for (const p of params) {
+            html += `<div>${p.marker} ${p.seriesName}: ${fmtM(p.value)}</div>`;
+          }
+          return html;
+        },
+      },
+      xAxis: {
+        type: "category",
+        data: names,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: EDITORIAL_COLORS.textMuted, fontSize: 11 },
+      },
+      yAxis: {
+        type: "value",
+        axisLabel: { formatter: (v: number) => fmtM(v), color: EDITORIAL_COLORS.textLight, fontSize: 10 },
+        splitLine: { lineStyle: { color: EDITORIAL_COLORS.border, type: "dashed" } },
+        axisLine: { show: false },
+        axisTick: { show: false },
+      },
+      series: [
+        {
+          name: "Ingreso",
+          type: "bar",
+          barMaxWidth: 32,
+          itemStyle: { color: EDITORIAL_COLORS.navy, borderRadius: [3, 3, 0, 0] },
+          data: scenarios.map((s) => s.total_revenue),
+        },
+        {
+          name: "Margen",
+          type: "bar",
+          barMaxWidth: 32,
+          itemStyle: { color: EDITORIAL_COLORS.blue, borderRadius: [3, 3, 0, 0] },
+          data: scenarios.map((s) => s.total_margin),
+        },
+      ],
+    };
+  }, [scenarios]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Comparación visual</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <BaseChart option={option} height={300} />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Helper components
 // ---------------------------------------------------------------------------
 
@@ -1078,7 +1281,7 @@ function SummaryKPI({ label, value, delta, positive }: { label: string; value: s
     <div className="rounded-lg p-3" style={{ background: "var(--bg-tertiary)" }}>
       <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{label}</p>
       <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{value}</p>
-      <p className="text-xs font-mono" style={{ color: positive ? "var(--positive)" : "var(--negative)" }}>{delta} vs base</p>
+      <p className="text-xs" style={{ color: positive ? "#2B4C7E" : "#D85A4A", fontVariantNumeric: "tabular-nums" }}>{delta} vs base</p>
     </div>
   );
 }

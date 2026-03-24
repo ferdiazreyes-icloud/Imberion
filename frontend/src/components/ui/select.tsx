@@ -16,13 +16,22 @@ export function Select({ label, options, placeholder, className, ...props }: Sel
       )}
       <select
         className={cn(
-          "rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2",
+          "rounded-lg border px-3 py-2 text-sm focus:outline-none",
           className
         )}
         style={{
           background: "var(--input-bg)",
           borderColor: "var(--input-border)",
           color: "var(--text-primary)",
+          transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = "var(--usg-red)";
+          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(166, 25, 46, 0.1)";
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = "var(--input-border)";
+          e.currentTarget.style.boxShadow = "none";
         }}
         {...props}
       >
