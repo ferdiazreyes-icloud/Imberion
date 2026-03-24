@@ -12,13 +12,15 @@ A B2B pricing decision engine that transforms sell-in data into actionable prici
 ## Core Modules
 
 ### 1. Overview Dashboard
-- 6 KPIs: revenue, volume, avg net price, avg elasticity, modeled coverage, avg rebate
-- Drill-down by category, segment (oro/plata/bronce), territory
+- 6 responsive KPIs with count-up animation and color-coded accent dots
+- Lollipop chart for revenue by category (horizontal, sorted, direct values)
+- Donut chart for volume by segment with values inside slices and emoji labels (🥇🥈🥉)
+- Dot plot for revenue by territory (horizontal, direct values)
 
 ### 2. History / Descriptive Elasticities
-- Price and volume trends over time
-- Historical elasticities with statistical confidence
-- Price-volume scatter visualization
+- Area+line trends with dual Y-axis, smooth curves, endLabels on last data point
+- Bubble scatter (price vs volume) with auto-fit axes and size encoding
+- Elasticities table with editorial styling and ConfidenceDot indicators
 
 ### 3. Predictive Pricing / Scenario Simulator
 - **Manual (Artisanal)**: Interactive price change slider (-20% to +20%), price-volume-margin curves
@@ -37,9 +39,10 @@ A B2B pricing decision engine that transforms sell-in data into actionable prici
 - Export to CSV and executive summary JSON
 
 ### 5. Passthrough & Rebates
-- List price to net price waterfall by segment
-- Rebate analysis by category
-- Price component evolution over time
+- Grouped bars for price decomposition by segment (net price, discount, rebate)
+- Horizontal bars for rebate % by category with direct value labels
+- Progress bars for rebate/discount % by segment with emoji labels
+- Temporal waterfall: stacked bars (Neto + Rebate + Descuento = Lista) with reference line and vertical price labels
 
 ## Global Filters
 
@@ -50,6 +53,17 @@ All modules share a multi-select filter bar:
 - **Distribuidor**: 75 real distributors (multi-select, searchable, cascades from territory and segment)
 - All filters support multiple selections via comma-separated values
 - Distributor list filters by territory via branch locations (not a single assignment)
+
+## Visual Design
+
+Inspired by Lomska "100 Vizzes" editorial style:
+- **Chart library**: ECharts 5 with custom BaseChart wrapper (SSR-safe)
+- **Color palette**: navy `#2B4C7E`, coral `#D85A4A`, blue `#5B8DB8`, gray `#C4C9CF`
+- **Typography**: Inter font, 13px for tables, direct data labels on charts
+- **Chart types**: lollipop, donut, dot plot, temporal waterfall, bubble scatter, area+line
+- **Tables**: editorial styling (no uppercase headers), ConfidenceDot (● high/medium/low), SegmentLabel (🥇🥈🥉)
+- **Cards**: borderless, clean white backgrounds
+- **KPIs**: responsive sizing, color-coded accent dots, count-up animation
 
 ## Data Domain (Mock)
 

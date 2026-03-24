@@ -12,7 +12,8 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 - [x] Deploy en producción (Railway)
 - [x] E2E tests con Playwright
 - [x] Integración del módulo analytics avanzado (predict_scenario + confidence_scorer) con API
-- [x] Visual refinement v2 — USG brand colors, Inter font, Tableau charts, dark mode, animations
+- [x] Visual refinement v2 — USG brand colors, Inter font, dark mode, animations
+- [x] Visual upgrade v3 — Migración Recharts→ECharts, estilo editorial Lomska (navy/coral/gray palette, lollipop charts, donut, dot plots, temporal waterfall, bubble scatter, editorial tables)
 - [x] Simulador potenciado — drill-down, comparación multi-escenario, mejor escenario por objetivo
 - [x] Filtros ComboBox multi-select con búsqueda — segmento, territorio, categoría y distribuidor
 - [x] Selector de distribuidor — 75 distribuidores reales filtrados por territorio (via sucursales) y segmento
@@ -34,17 +35,17 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 
 | Módulo | Ruta | Descripción |
 |--------|------|-------------|
-| Overview | `/` | Dashboard con 6 KPIs y drill-down por categoría, segmento y territorio |
-| Historial | `/history` | Elasticidades históricas, tendencias precio-volumen, scatter plot, filtro de confianza |
-| Simulador | `/simulator` | 5 tabs: Simular (manual), Comparar, Mejor Escenario, Cargar Excel, Optimizar |
-| Recomendaciones | `/recommendations` | Recomendaciones por segmento/territorio/SKU con export CSV |
-| Passthrough | `/passthrough` | Análisis de rebates, descuentos y precio neto |
+| Overview | `/` | Dashboard con 6 KPIs responsivos, lollipop chart (categoría), donut con valores (segmento), dot plot (territorio) |
+| Historial | `/history` | Tendencias con area+endLabels, bubble scatter auto-fit, tabla de elasticidades editorial |
+| Simulador | `/simulator` | 5 tabs: Simular (area chart con markLines), Comparar, Mejor Escenario, Cargar Excel, Optimizar |
+| Recomendaciones | `/recommendations` | Stacked bars con emojis 🥇🥈🥉, tabla editorial con ConfidenceDot |
+| Passthrough | `/passthrough` | Barras agrupadas, temporal waterfall (Neto+Rebate+Descuento=Lista), horizontal bars |
 
 ## Stack
 
 | Capa | Tecnología |
 |------|-----------|
-| Frontend | Next.js 16, React 19, Tailwind CSS 4, Recharts 3, Zustand, TanStack Query |
+| Frontend | Next.js 16, React 19, Tailwind CSS 4, ECharts 5, Zustand, TanStack Query |
 | Backend | FastAPI, SQLAlchemy 2, Pydantic 2, scipy |
 | Database | PostgreSQL 16 |
 | Deploy | Railway (Docker) |

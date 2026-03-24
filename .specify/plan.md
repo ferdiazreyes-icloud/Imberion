@@ -3,7 +3,7 @@
 ## Architecture
 
 Monorepo with 3 layers:
-- **Frontend**: Next.js 16 + React 19 + Tailwind CSS 4 + Recharts 3 + Zustand + TanStack Query
+- **Frontend**: Next.js 16 + React 19 + Tailwind CSS 4 + ECharts 5 + Zustand + TanStack Query
 - **Backend**: Python + FastAPI + SQLAlchemy 2 + Pydantic 2
 - **Database**: PostgreSQL 16
 
@@ -22,7 +22,7 @@ Monorepo with 3 layers:
 | Mock data | Python script generator | Reproducible, realistic, configurable |
 | State management | Zustand | Lightweight, no boilerplate |
 | Data fetching | TanStack Query | Cache, refetch, loading states |
-| Charts | Recharts 3 | React-native, declarative, good TS support |
+| Charts | ECharts 5 (via echarts-for-react) | Rich chart types (lollipop, waterfall, rose, scatter), editorial Lomska style, better customization than Recharts |
 
 ## API Design
 
@@ -46,7 +46,14 @@ All endpoints under `/api/` prefix with OpenAPI auto-documentation at `/docs`.
 - E2E tests: 32 Playwright tests covering all 5 modules against production
 - Mock data: 86 SKUs, 75 real distributors, 29 territories, 24 months of transactions seeded
 - Auto table creation on startup + `/api/admin/seed` endpoint for remote seeding
-- Visual refinement v2: USG brand colors (#A6192E), Inter font, Tableau chart palette, dark/light mode, animations
+- Visual refinement v2: USG brand colors (#A6192E), Inter font, dark/light mode, animations
+- Visual upgrade v3: Full migration Recharts→ECharts with editorial Lomska style
+  - Color palette: navy #2B4C7E, coral #D85A4A, blue #5B8DB8, gray #C4C9CF
+  - Creative chart types: lollipop (categories), donut with inner values (segments), dot plot (territories), temporal waterfall (price decomposition), bubble scatter (elasticities)
+  - Editorial tables: 13px Inter, ConfidenceDot component, SegmentLabel with emojis (🥇🥈🥉)
+  - Responsive KPI cards with auto-sizing typography
+  - Centralized ECharts theme (echarts-theme.ts) and SSR-safe BaseChart wrapper (base-chart.tsx)
+  - Badge component reduced to 3-color palette (navy/coral/gray)
 - Simulator quick-simulate fixed: POST→GET method alignment, safe fallback for empty data
 - Analytics engine integrated: `predict_scenario()`, `confidence_scorer()`, `suggest_improvements()`, `optimal_price_search()`
 - Enhanced simulator: 5 tabs — Simular (manual), Comparar, Mejor Escenario, Cargar Excel, Optimizar
