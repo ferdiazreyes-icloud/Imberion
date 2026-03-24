@@ -4,8 +4,8 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 
 ## Estado Actual
 
-- [x] Backend (FastAPI) — 27 endpoints, 38 unit tests passing
-- [x] Frontend (Next.js) — 5 módulos con datos en vivo
+- [x] Backend (FastAPI) — 28 endpoints, 56 unit tests passing
+- [x] Frontend (Next.js) — 6 módulos con datos en vivo
 - [x] Motor de elasticidades (log-log regression con scipy)
 - [x] Generador de datos mock (86 SKUs, 75 distribuidores reales, 29 territorios, 24 meses)
 - [x] Docker setup para desarrollo local
@@ -22,6 +22,7 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 - [x] Soporte multi-filtro — todos los filtros aceptan selección múltiple con valores separados por coma
 - [x] Escenarios por carga de Excel — upload de plan de precios, evaluación con elasticidades, sugerencias de mejora
 - [x] Optimización automática — maximizar margen/ingreso/volumen con rango de precio definido por el usuario
+- [x] Agente AI conversacional — LangGraph multi-modelo (Sonnet orquesta + Opus analiza), 7 herramientas, panel lateral + página dedicada
 
 ## URLs de Producción
 
@@ -40,13 +41,15 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 | Simulador | `/simulator` | 5 tabs: Simular (area chart con markLines), Comparar, Mejor Escenario, Cargar Excel, Optimizar |
 | Recomendaciones | `/recommendations` | Stacked bars con emojis 🥇🥈🥉, tabla editorial con ConfidenceDot |
 | Passthrough | `/passthrough` | Barras agrupadas, temporal waterfall (Neto+Rebate+Descuento=Lista), horizontal bars |
+| Agente AI | `/agent` | Chat conversacional con datos reales. Panel lateral disponible en todas las páginas. Multi-modelo: Sonnet (fast) + Opus (deep analysis) |
 
 ## Stack
 
 | Capa | Tecnología |
 |------|-----------|
 | Frontend | Next.js 16, React 19, Tailwind CSS 4, ECharts 5, Zustand, TanStack Query |
-| Backend | FastAPI, SQLAlchemy 2, Pydantic 2, scipy |
+| Backend | FastAPI, SQLAlchemy 2, Pydantic 2, scipy, LangGraph, langchain-anthropic |
+| AI Agent | Claude Sonnet 4 (orchestrator + tools), Claude Opus 4 (deep analysis) |
 | Database | PostgreSQL 16 |
 | Deploy | Railway (Docker) |
 | Tests | pytest (backend), Playwright (e2e) |
@@ -84,7 +87,7 @@ npm run dev
 
 ## Tests
 
-### Backend (unit tests) — 38/38
+### Backend (unit tests) — 56/56
 
 ```bash
 cd backend
@@ -125,6 +128,7 @@ BASE_URL=http://localhost:3000 npx playwright test
    - `DATABASE_URL` → `${{Postgres.DATABASE_URL}}` (referencia al addon)
    - `CORS_ORIGINS` → `["https://usg-frontend-production.up.railway.app"]`
    - `DEBUG` → `false`
+   - `ANTHROPIC_API_KEY` → tu API key de Anthropic (requerida para el agente AI)
 4. Generar dominio público en Settings > Networking
 5. Seed data: `curl -X POST https://usg-backend-production.up.railway.app/api/admin/seed`
 
@@ -169,6 +173,7 @@ BASE_URL=http://localhost:3000 npx playwright test
 | POST | `/api/simulator/scenarios/optimize` | Crear escenario con optimización automática |
 | GET | `/api/export/scenario-csv/{id}` | Exportar resultados de escenario a CSV |
 | GET | `/api/export/executive-summary` | Informe ejecutivo JSON |
+| POST | `/api/agent/chat` | Chat conversacional con agente AI (SSE streaming) |
 | POST | `/api/admin/seed` | Poblar BD con datos mock |
 
 ### Filtros Globales
@@ -192,4 +197,4 @@ Todos los GET endpoints aceptan estos query params opcionales:
 | 5 | Módulo de Rebates óptimos por distribuidor | Pendiente — validar con cliente |
 | 6b | ~~Escenarios por carga de Excel (plan de precios)~~ | Completado |
 | 6c | ~~Escenarios por optimización automática (maximizar objetivo)~~ | Completado |
-| 7 | Agente AI conversacional para consultar datos | Pendiente |
+| 7 | ~~Agente AI conversacional para consultar datos~~ | Completado |

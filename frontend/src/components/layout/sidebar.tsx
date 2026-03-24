@@ -9,6 +9,7 @@ import {
   FlaskConical,
   Lightbulb,
   ArrowLeftRight,
+  Bot,
 } from "lucide-react";
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
   { href: "/simulator", label: "Simulador", icon: FlaskConical },
   { href: "/recommendations", label: "Recomendaciones", icon: Lightbulb },
   { href: "/passthrough", label: "Passthrough", icon: ArrowLeftRight },
+  { href: "/agent", label: "Agente AI", icon: Bot },
 ];
 
 export function Sidebar() {

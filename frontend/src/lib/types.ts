@@ -134,3 +134,23 @@ export interface BestScenarioResponse {
   best: ScenarioCompareItem;
   runners_up: ScenarioCompareItem[];
 }
+
+// Chat / Agent types
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  status?: string; // "Consultando elasticidades..."
+  timestamp: number;
+}
+
+export interface PageContext {
+  currentPage: string;
+  filters: Filters;
+  dataSummary: string;
+}
+
+export interface SSEEvent {
+  type: "status" | "text_delta" | "done" | "error";
+  text: string;
+}

@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     app_name: str = "USG Pricing Decision Engine"
     debug: bool = False
     port: int = 8000
+    anthropic_api_key: str = ""
+    agent_model_fast: str = "claude-sonnet-4-20250514"
+    agent_model_deep: str = "claude-opus-4-20250514"
 
     model_config = {"env_file": ".env"}
 

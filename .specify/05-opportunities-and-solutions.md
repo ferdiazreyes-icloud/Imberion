@@ -24,6 +24,7 @@
 | WP-12 | Exportación (PDF/Excel) | WP-09 | Baja |
 | WP-13 | Deploy (Vercel + Railway) | WP-06+ | Baja |
 | WP-14 | Testing + QA | Todos | Media |
+| WP-15 | Agente AI Conversacional | WP-03, WP-04, WP-05 | Alta |
 
 ### 2. Decisiones Clave de Implementación
 

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import Base, engine, get_db
-from app.api import overview, history, simulator, recommendations, passthrough, export
+from app.api import overview, history, simulator, recommendations, passthrough, export, agent
 from app.models import Territory, Category, Customer, Branch
 
 
@@ -35,6 +35,7 @@ app.include_router(simulator.router, prefix="/api", tags=["Simulator"])
 app.include_router(recommendations.router, prefix="/api", tags=["Recommendations"])
 app.include_router(passthrough.router, prefix="/api", tags=["Passthrough"])
 app.include_router(export.router, prefix="/api", tags=["Export"])
+app.include_router(agent.router, prefix="/api", tags=["Agent"])
 
 
 @app.get("/api/health")

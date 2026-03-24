@@ -64,6 +64,15 @@
 | ML | scikit-learn | 1.x | Modelos predictivos |
 | Server | Uvicorn | latest | ASGI server |
 
+### AI / LLM Agent
+| Componente | Tecnología | Versión | Propósito |
+|------------|-----------|---------|-----------|
+| Agent framework | LangGraph | 0.4+ | Flujos cíclicos multi-agente con estado |
+| LLM adapter | langchain-anthropic | 0.3+ | Integración con Claude API |
+| LLM core | langchain-core | 0.3+ | Tipos base (messages, tools) |
+| LLM orchestrator | Claude Sonnet 4 | claude-sonnet-4-20250514 | Clasificación de intent, ejecución de tools, síntesis |
+| LLM deep analysis | Claude Opus 4 | claude-opus-4-20250514 | Análisis causal y estratégico profundo |
+
 ### Infraestructura
 | Componente | Tecnología | Propósito |
 |------------|-----------|-----------|

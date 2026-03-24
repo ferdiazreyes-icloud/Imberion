@@ -80,6 +80,7 @@ USG necesita tomar decisiones de pricing basadas en datos para su canal de distr
 | C-08 | Exportar informes ejecutivos | Recommendations | Should |
 | C-09 | Visualizar sell-out cuando exista | Sell-out | Could |
 | C-10 | Estimar impacto competitivo | Competitors | Could |
+| C-11 | Consulta conversacional de datos (Agente AI) | Agent | Must |
 
 ---
 
@@ -129,7 +130,6 @@ USG necesita tomar decisiones de pricing basadas en datos para su canal de distr
 - Integración transaccional en tiempo real
 - Workflow de aprobación
 - Multi-tenant
-- IA generativa para explicaciones
 - Optimización multiobjetivo
 
 ---

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Providers } from "@/components/providers";
+import { ChatPanel } from "@/components/chat/ChatPanel";
+import { ChatToggle } from "@/components/chat/ChatToggle";
 
 export const metadata: Metadata = {
   title: "USG Pricing Decision Engine",
@@ -23,6 +25,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {children}
               </div>
             </main>
+            <ChatPanel />
+            <ChatToggle />
           </div>
         </Providers>
       </body>
