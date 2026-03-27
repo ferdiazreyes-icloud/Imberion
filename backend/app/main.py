@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import Base, engine, get_db
 from app.api import overview, history, simulator, recommendations, passthrough, export, agent
-from app.models import Territory, Category, Customer, Branch
+from app.models import Territory, Category, Customer, Branch, Product
 
 
 @asynccontextmanager
@@ -65,6 +65,19 @@ def get_categories(db: Session = Depends(get_db)):
 def get_territories(db: Session = Depends(get_db)):
     territories = db.query(Territory).all()
     return [{"id": t.id, "region": t.region, "state": t.state, "municipality": t.municipality} for t in territories]
+
+
+@app.get("/api/filters/products")
+def get_products(
+    category_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    q = db.query(Product)
+    if category_id:
+        cids = [int(c) for c in category_id.split(",") if c.strip()]
+        q = q.filter(Product.category_id.in_(cids)) if len(cids) > 1 else q.filter(Product.category_id == cids[0])
+    products = q.order_by(Product.name).all()
+    return [{"id": p.id, "name": p.name, "sku_code": p.sku_code} for p in products]
 
 
 @app.get("/api/filters/customers")

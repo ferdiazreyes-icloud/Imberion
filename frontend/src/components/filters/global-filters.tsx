@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ComboBox } from "@/components/ui/combobox";
 import { useFilters } from "@/hooks/useFilters";
-import { getFilterCategories, getFilterTerritories, getFilterCustomers } from "@/lib/api";
+import { getFilterCategories, getFilterTerritories, getFilterCustomers, getFilterProducts } from "@/lib/api";
 
 export function GlobalFilters() {
   const { filters, setFilter, clearFilters } = useFilters();
@@ -20,6 +20,12 @@ export function GlobalFilters() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: productsRaw } = useQuery({
+    queryKey: ["filter-products", filters.category_id],
+    queryFn: () => getFilterProducts(filters.category_id),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: customersRaw } = useQuery({
     queryKey: ["filter-customers", filters.segment, filters.territory_id],
     queryFn: () => getFilterCustomers(filters.segment, filters.territory_id),
@@ -28,6 +34,7 @@ export function GlobalFilters() {
 
   const categories = (categoriesRaw || []).map((c) => ({ value: String(c.id), label: c.name }));
   const territories = (territoriesRaw || []).map((t) => ({ value: String(t.id), label: `${t.state} - ${t.municipality}` }));
+  const products = (productsRaw || []).map((p) => ({ value: String(p.id), label: `${p.sku_code} - ${p.name}` }));
   const customers = (customersRaw || []).map((c) => ({ value: String(c.id), label: `${c.name} (${c.segment})` }));
 
   return (
@@ -62,6 +69,12 @@ export function GlobalFilters() {
         options={categories}
         value={filters.category_id || ""}
         onChange={(val) => setFilter("category_id", val)}
+      />
+      <ComboBox
+        label="SKU"
+        options={products}
+        value={filters.product_id || ""}
+        onChange={(val) => setFilter("product_id", val)}
       />
       <ComboBox
         label="Distribuidor"
