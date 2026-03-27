@@ -301,7 +301,6 @@ export default function HistoryPage() {
                   <tr style={{ borderBottom: "1px solid var(--border-primary)" }}>
                     <th className="px-3 py-2.5 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Nodo</th>
                     <th className="px-3 py-2.5 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Coeficiente</th>
-                    <th className="px-3 py-2.5 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>R²</th>
                     <th className="px-3 py-2.5 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Confianza</th>
                     <th className="px-3 py-2.5 text-left text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Muestra</th>
                   </tr>
@@ -312,7 +311,6 @@ export default function HistoryPage() {
                     >
                       <td className="px-3 py-2.5 font-medium" style={{ color: "var(--text-primary)" }}>{e.node_name || `${e.node_type} #${e.node_id}`}</td>
                       <td className="px-3 py-2.5" style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>{e.coefficient.toFixed(3)}</td>
-                      <td className="px-3 py-2.5" style={{ color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>{e.r_squared.toFixed(3)}</td>
                       <td className="px-3 py-2.5"><ConfidenceDot level={e.confidence_level} /></td>
                       <td className="px-3 py-2.5" style={{ color: "var(--text-tertiary)" }}>{e.sample_size}</td>
                     </tr>

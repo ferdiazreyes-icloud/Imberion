@@ -418,12 +418,12 @@ def seed_elasticities(db, products, categories, territories):
     period_start = date(2024, 1, 1)
     period_end = date(2025, 12, 31)
 
-    # By category
+    # By category — most categories get high confidence (80% high, 20% medium)
     for cat in categories:
         coeff = round(random.uniform(-2.5, -0.3), 3)
-        p_val = round(random.uniform(0.001, 0.15), 4)
-        r_sq = round(random.uniform(0.4, 0.95), 3)
-        conf = "high" if p_val < 0.05 and r_sq > 0.7 else ("medium" if p_val < 0.1 else "low")
+        p_val = round(random.uniform(0.001, 0.04), 4)
+        r_sq = round(random.uniform(0.7, 0.95), 3)
+        conf = "high" if random.random() < 0.8 else "medium"
         elasticities.append(Elasticity(
             type="historical", coefficient=coeff, confidence_level=conf,
             p_value=p_val, r_squared=r_sq, node_type="category", node_id=cat.id,
