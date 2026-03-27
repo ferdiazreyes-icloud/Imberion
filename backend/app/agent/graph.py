@@ -19,7 +19,7 @@ from langgraph.graph import StateGraph, END
 
 from app.config import settings
 from app.agent.state import AgentState
-from app.agent.prompts import build_orchestrator_prompt, DEEP_ANALYST_PROMPT, SYNTHESIZER_PROMPT
+from app.agent.prompts import build_orchestrator_prompt, DEEP_ANALYST_PROMPT, SYNTHESIZER_PROMPT, GUARDRAIL_RESPONSE
 from app.agent import tools as tool_fns
 
 # ---------------------------------------------------------------------------
@@ -278,16 +278,15 @@ def build_graph():
         return {"final_response": "No pude obtener datos para responder tu pregunta. ¿Podrías reformularla?"}
 
     def direct_response(state: AgentState) -> dict:
-        """Handle direct responses (greetings, off-topic)."""
+        """Handle direct responses (greetings, off-topic) with guardrails."""
         llm = ChatAnthropic(
             model=settings.agent_model_fast,
             api_key=settings.anthropic_api_key,
             max_tokens=1024,
         )
 
-        system = build_orchestrator_prompt(state["context"])
         response = llm.invoke([
-            SystemMessage(content=system),
+            SystemMessage(content=GUARDRAIL_RESPONSE),
             *state["messages"],
         ])
 

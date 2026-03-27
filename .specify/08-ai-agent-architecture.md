@@ -130,6 +130,22 @@ INSTRUCCIONES:
 
 DOMINIO: 86 SKUs, 10 categorías, 75 distribuidores (oro/plata/bronce),
 29 territorios, 24 meses. Precio Neto = Lista - Descuento - Rebate.
+
+LÍMITES — IMPORTANTE:
+Solo puedes responder sobre pricing, revenue, márgenes, elasticidades,
+descuentos, rebates, simulaciones, recomendaciones, y datos del portafolio USG.
+Si el usuario pregunta sobre otro tema → rechaza amablemente y ofrece ejemplos.
+NUNCA respondas preguntas fuera de tu dominio.
+```
+
+### Guardrail Response (usado en nodo `direct_response`)
+
+```
+Solo puedes ayudar con pricing B2B para USG México.
+- Saludo → saluda + 2-3 ejemplos de preguntas
+- Pregunta sobre capacidades → lista con ejemplos
+- Off-topic → rechaza amablemente, ofrece ejemplos de pricing
+- Sin excepciones
 ```
 
 ### Deep Analyst (estático)
@@ -254,6 +270,7 @@ La conversación vive en memoria — se pierde al refrescar. Máximo ~30 mensaje
 |-------------|---------------|
 | **Read-only** | Las 7 tools solo hacen SELECT — ninguna modifica datos (RN-09) |
 | **No inventa datos** | System prompt instruye usar tools para datos reales (RN-10) |
+| **Guardrail off-topic** | Orchestrator y direct_response rechazan preguntas fuera del dominio pricing/USG |
 | **API key server-side** | La key vive solo en el backend. El frontend nunca la ve |
 | **Max iteraciones** | Loop ReAct limitado a 5 ciclos para evitar loops infinitos |
 | **Max mensajes** | Frontend limita a ~30 mensajes por conversación para no exceder contexto del LLM |
