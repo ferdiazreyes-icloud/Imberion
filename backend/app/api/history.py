@@ -29,7 +29,35 @@ def get_elasticities(
         q = q.filter(Elasticity.type == type)
     if confidence_level:
         q = q.filter(Elasticity.confidence_level == confidence_level)
-    return q.all()
+    rows = q.all()
+
+    # Build lookup maps for resolving node names
+    name_cache: dict[tuple[str, int], str] = {}
+    node_types_needed = {(r.node_type, r.node_id) for r in rows}
+    cat_ids = [nid for nt, nid in node_types_needed if nt == "category"]
+    sku_ids = [nid for nt, nid in node_types_needed if nt == "sku"]
+    seg_ids = [nid for nt, nid in node_types_needed if nt == "segment"]
+    ter_ids = [nid for nt, nid in node_types_needed if nt == "territory"]
+
+    if cat_ids:
+        for c in db.query(Category.id, Category.name).filter(Category.id.in_(cat_ids)).all():
+            name_cache[("category", c.id)] = c.name
+    if sku_ids:
+        for p in db.query(Product.id, Product.sku_code, Product.name).filter(Product.id.in_(sku_ids)).all():
+            name_cache[("sku", p.id)] = f"{p.sku_code} - {p.name}"
+    if ter_ids:
+        for t in db.query(Territory.id, Territory.state).filter(Territory.id.in_(ter_ids)).all():
+            name_cache[("territory", t.id)] = t.state
+    if seg_ids:
+        for cust in db.query(Customer.id, Customer.segment).filter(Customer.id.in_(seg_ids)).all():
+            name_cache[("segment", cust.id)] = cust.segment.capitalize()
+
+    results = []
+    for r in rows:
+        out = ElasticityOut.model_validate(r)
+        out.node_name = name_cache.get((r.node_type, r.node_id), f"{r.node_type} #{r.node_id}")
+        results.append(out)
+    return results
 
 
 @router.get("/history/trends")

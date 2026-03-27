@@ -32,6 +32,7 @@ class ElasticityOut(BaseModel):
     r_squared: float
     node_type: str
     node_id: int
+    node_name: str = ""
     period_start: Union[str, date]
     period_end: Union[str, date]
     sample_size: int

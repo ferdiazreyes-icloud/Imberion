@@ -47,6 +47,7 @@ export interface ElasticityData {
   r_squared: number;
   node_type: string;
   node_id: number;
+  node_name: string;
   sample_size: number;
 }
 

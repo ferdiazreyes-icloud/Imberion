@@ -310,7 +310,7 @@ export default function HistoryPage() {
                   {(elasticities || []).slice(0, 30).map((e) => (
                     <tr key={e.id} className="table-row-interactive" style={{ borderBottom: "1px solid var(--border-secondary)" }}
                     >
-                      <td className="px-3 py-2.5 font-medium" style={{ color: "var(--text-primary)" }}>{e.node_type} #{e.node_id}</td>
+                      <td className="px-3 py-2.5 font-medium" style={{ color: "var(--text-primary)" }}>{e.node_name || `${e.node_type} #${e.node_id}`}</td>
                       <td className="px-3 py-2.5" style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>{e.coefficient.toFixed(3)}</td>
                       <td className="px-3 py-2.5" style={{ color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>{e.r_squared.toFixed(3)}</td>
                       <td className="px-3 py-2.5"><ConfidenceDot level={e.confidence_level} /></td>
