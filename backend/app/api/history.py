@@ -38,6 +38,7 @@ def get_trends(
     node_id: Optional[int] = None,
     segment: Optional[str] = None,
     territory_id: Optional[str] = None,
+    product_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
@@ -63,6 +64,7 @@ def get_trends(
     else:
         label_q = "Portafolio Total"
 
+    q = _filter_ids(q, Transaction.product_id, _parse_ids(product_id))
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     segs = _parse_strs(segment)
     if segs:

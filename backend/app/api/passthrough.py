@@ -15,6 +15,7 @@ router = APIRouter()
 def passthrough_by_segment(
     category_id: Optional[str] = None,
     territory_id: Optional[str] = None,
+    product_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
@@ -28,6 +29,7 @@ def passthrough_by_segment(
         func.sum(Transaction.revenue).label("revenue"),
     ).join(Customer, Customer.id == Transaction.customer_id)
 
+    q = _filter_ids(q, Transaction.product_id, _parse_ids(product_id))
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     cat_ids = _parse_ids(category_id)
     if cat_ids:
@@ -58,6 +60,7 @@ def passthrough_by_segment(
 def passthrough_by_category(
     segment: Optional[str] = None,
     territory_id: Optional[str] = None,
+    product_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
@@ -71,6 +74,7 @@ def passthrough_by_category(
         func.sum(Transaction.volume).label("volume"),
     ).join(Product, Product.id == Transaction.product_id).join(Category, Category.id == Product.category_id)
 
+    q = _filter_ids(q, Transaction.product_id, _parse_ids(product_id))
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     segs = _parse_strs(segment)
     if segs:
@@ -98,6 +102,7 @@ def passthrough_by_category(
 def passthrough_trends(
     segment: Optional[str] = None,
     category_id: Optional[str] = None,
+    product_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
@@ -112,6 +117,7 @@ def passthrough_trends(
         func.avg(Transaction.net_price).label("avg_net_price"),
     )
 
+    q = _filter_ids(q, Transaction.product_id, _parse_ids(product_id))
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     segs = _parse_strs(segment)
     if segs:

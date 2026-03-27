@@ -40,6 +40,7 @@ def get_overview(
     territory_id: Optional[str] = None,
     region: Optional[str] = None,
     category_id: Optional[str] = None,
+    product_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     period_start: Optional[str] = None,
     period_end: Optional[str] = None,
@@ -55,6 +56,7 @@ def get_overview(
         func.count(distinct(Transaction.territory_id)).label("n_territories"),
     )
 
+    q = _filter_ids(q, Transaction.product_id, _parse_ids(product_id))
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     segs = _parse_strs(segment)
     if segs:
@@ -100,6 +102,7 @@ def get_overview(
 def overview_by_category(
     segment: Optional[str] = None,
     territory_id: Optional[str] = None,
+    product_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
@@ -114,6 +117,7 @@ def overview_by_category(
         func.count(distinct(Transaction.product_id)).label("n_skus"),
     ).join(Product, Product.id == Transaction.product_id).join(Category, Category.id == Product.category_id)
 
+    q = _filter_ids(q, Transaction.product_id, _parse_ids(product_id))
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     segs = _parse_strs(segment)
     if segs:
@@ -139,6 +143,7 @@ def overview_by_category(
 def overview_by_segment(
     category_id: Optional[str] = None,
     territory_id: Optional[str] = None,
+    product_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
@@ -151,6 +156,7 @@ def overview_by_segment(
         func.count(distinct(Transaction.customer_id)).label("n_customers"),
     ).join(Customer, Customer.id == Transaction.customer_id)
 
+    q = _filter_ids(q, Transaction.product_id, _parse_ids(product_id))
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     cat_ids = _parse_ids(category_id)
     if cat_ids:
@@ -178,6 +184,7 @@ def overview_by_segment(
 def overview_by_territory(
     segment: Optional[str] = None,
     category_id: Optional[str] = None,
+    product_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
@@ -190,6 +197,7 @@ def overview_by_territory(
         func.avg(Transaction.net_price).label("avg_net_price"),
     ).join(Territory, Territory.id == Transaction.territory_id)
 
+    q = _filter_ids(q, Transaction.product_id, _parse_ids(product_id))
     q = _filter_ids(q, Transaction.customer_id, _parse_ids(customer_id))
     segs = _parse_strs(segment)
     if segs:
