@@ -109,3 +109,23 @@ def seed_database(db: Session = Depends(get_db)):
     from seeds.generate_mock_data import seed_all
     seed_all(db)
     return {"status": "ok", "message": "Mock data generated successfully"}
+
+
+@app.post("/api/admin/reseed-elasticities", tags=["Admin"])
+def reseed_elasticities(db: Session = Depends(get_db)):
+    """Delete and regenerate elasticities with current seed logic."""
+    from app.models import Elasticity
+    from seeds.generate_mock_data import seed_elasticities
+
+    count_before = db.query(Elasticity).count()
+    db.query(Elasticity).delete()
+    db.flush()
+
+    products = db.query(Product).all()
+    categories = db.query(Category).all()
+    territories = db.query(Territory).all()
+    seed_elasticities(db, products, categories, territories)
+    db.commit()
+
+    count_after = db.query(Elasticity).count()
+    return {"status": "ok", "deleted": count_before, "created": count_after}
