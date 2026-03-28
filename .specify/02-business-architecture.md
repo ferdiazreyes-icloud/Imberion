@@ -207,6 +207,7 @@ Portafolio USG (86 SKUs)
 | RN-08 | Cada recomendación incluye racional: elasticidad, margen, volumen, sensibilidad | Recommendations |
 | RN-09 | El agente AI solo consulta datos, nunca los modifica (read-only) | Agent |
 | RN-10 | El agente siempre usa herramientas para datos reales — nunca inventa números | Agent |
+| RN-11 | El agente solo responde sobre pricing/USG — rechaza preguntas off-topic con redirección amable | Agent |
 
 ---
 

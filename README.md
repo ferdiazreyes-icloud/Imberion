@@ -4,7 +4,7 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 
 ## Estado Actual
 
-- [x] Backend (FastAPI) — 28 endpoints, 56 unit tests passing
+- [x] Backend (FastAPI) — 30 endpoints, 56 unit tests passing
 - [x] Frontend (Next.js) — 6 módulos con datos en vivo
 - [x] Motor de elasticidades (log-log regression con scipy)
 - [x] Generador de datos mock (86 SKUs, 75 distribuidores reales, 29 territorios, 24 meses)
@@ -15,14 +15,16 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 - [x] Visual refinement v2 — USG brand colors, Inter font, dark mode, animations
 - [x] Visual upgrade v3 — Migración Recharts→ECharts, estilo editorial Lomska (navy/coral/gray palette, lollipop charts, donut, dot plots, temporal waterfall, bubble scatter, editorial tables)
 - [x] Simulador potenciado — drill-down, comparación multi-escenario, mejor escenario por objetivo
-- [x] Filtros ComboBox multi-select con búsqueda — segmento, territorio, categoría y distribuidor
+- [x] Filtros ComboBox multi-select con búsqueda — segmento, territorio, categoría, SKU y distribuidor
 - [x] Selector de distribuidor — 75 distribuidores reales filtrados por territorio (via sucursales) y segmento
 - [x] Confianza movida a módulo Historial exclusivamente
 - [x] Export CSV de escenarios en simulador
 - [x] Soporte multi-filtro — todos los filtros aceptan selección múltiple con valores separados por coma
 - [x] Escenarios por carga de Excel — upload de plan de precios, evaluación con elasticidades, sugerencias de mejora
 - [x] Optimización automática — maximizar margen/ingreso/volumen con rango de precio definido por el usuario
-- [x] Agente AI conversacional — LangGraph multi-modelo (Sonnet orquesta + Opus analiza), 7 herramientas, panel lateral + página dedicada
+- [x] Agente AI conversacional — LangGraph multi-modelo (Sonnet orquesta + Opus analiza), 7 herramientas, panel lateral + página dedicada, guardrails off-topic
+- [x] Filtro por SKU en todos los endpoints de datos (overview, history, passthrough)
+- [x] Elasticidades con nombres reales (categoría, SKU, territorio) en vez de IDs genéricos
 
 ## URLs de Producción
 
@@ -37,11 +39,11 @@ Motor de Decisión de Precios B2B para canales de distribución nacional en Méx
 | Módulo | Ruta | Descripción |
 |--------|------|-------------|
 | Overview | `/` | Dashboard con 6 KPIs responsivos, lollipop chart (categoría), donut con valores (segmento), dot plot (territorio) |
-| Historial | `/history` | Tendencias con area+endLabels, bubble scatter auto-fit, tabla de elasticidades editorial |
+| Historial | `/history` | Tendencias con area+endLabels, bubble scatter auto-fit, tabla de elasticidades con nombres reales y confianza |
 | Simulador | `/simulator` | 5 tabs: Simular (area chart con markLines), Comparar, Mejor Escenario, Cargar Excel, Optimizar |
 | Recomendaciones | `/recommendations` | Stacked bars con emojis 🥇🥈🥉, tabla editorial con ConfidenceDot |
 | Passthrough | `/passthrough` | Barras agrupadas, temporal waterfall (Neto+Rebate+Descuento=Lista), horizontal bars |
-| Agente AI | `/agent` | Chat conversacional con datos reales. Panel lateral disponible en todas las páginas. Multi-modelo: Sonnet (fast) + Opus (deep analysis) |
+| Agente AI | `/agent` | Chat conversacional con datos reales. Panel lateral disponible en todas las páginas. Multi-modelo: Sonnet (fast) + Opus (deep analysis). Guardrails: solo responde temas de pricing |
 
 ## Stack
 
@@ -174,7 +176,9 @@ BASE_URL=http://localhost:3000 npx playwright test
 | GET | `/api/export/scenario-csv/{id}` | Exportar resultados de escenario a CSV |
 | GET | `/api/export/executive-summary` | Informe ejecutivo JSON |
 | POST | `/api/agent/chat` | Chat conversacional con agente AI (SSE streaming) |
+| GET | `/api/filters/products` | Lista de SKUs (filtrable por categoría) |
 | POST | `/api/admin/seed` | Poblar BD con datos mock |
+| POST | `/api/admin/reseed-elasticities` | Regenerar elasticidades con lógica actual |
 
 ### Filtros Globales
 
@@ -186,7 +190,7 @@ Todos los GET endpoints aceptan estos query params opcionales:
 | `territory_id` | string | `1`, `1,5,12` | Sí |
 | `region` | string | `Norte`, `Centro` | No |
 | `category_id` | string | `1`, `1,3` | Sí |
-| `product_id` | int | `15` | No |
+| `product_id` | string | `15`, `15,22,43` | Sí |
 | `customer_id` | string | `1`, `1,5,12` | Sí |
 | `confidence_level` | string | `high`, `medium`, `low` | No (solo en History) |
 

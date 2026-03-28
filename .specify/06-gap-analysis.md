@@ -2,14 +2,14 @@
 
 ## USG Pricing Decision Engine (MVP)
 
-**Date:** 2026-03-19 (updated)
+**Date:** 2026-03-27 (updated)
 **Baseline:** Architecture docs (Phases 00–05) vs current deployed state
 
 ---
 
 ## 1. Summary
 
-The MVP is approximately 95% aligned with the original architecture documents. All 6 modules are functional (including the new AI Agent). The analytics engine is fully integrated. AI conversational agent implemented with LangGraph multi-model architecture. Remaining gaps: export formats, authentication, and CI/CD.
+The MVP is approximately 95% aligned with the original architecture documents. All 6 modules are functional (including the new AI Agent). The analytics engine is fully integrated. AI conversational agent implemented with LangGraph multi-model architecture and off-topic guardrails (RN-11). SKU filter added to all data endpoints. Elasticity table shows real entity names. Remaining gaps: export formats, authentication, and CI/CD.
 
 ---
 
@@ -19,7 +19,7 @@ The MVP is approximately 95% aligned with the original architecture documents. A
 |----|------|--------|-------|
 | WP-01 | Project setup (monorepo, Docker, CI) | Done | Docker + docker-compose working. No CI/CD pipeline (GitHub Actions) yet |
 | WP-02 | Data model + migrations + mock seeds | Done | 86 SKUs, 25 distributors, 10 territories, 24 months. Auto-create tables instead of Alembic |
-| WP-03 | Base API (CRUD + filters) | Done | 23 endpoints with global filters |
+| WP-03 | Base API (CRUD + filters) | Done | 30 endpoints with global filters (incl. SKU filter, reseed-elasticities) |
 | WP-04 | Elasticity engine (historical + predictive) | **Done** | `predict_scenario()` and `score_confidence()` integrated with simulator endpoints |
 | WP-05 | Layout + Navigation + Global filters | Done | Sidebar + 5 modules + filter params |
 | WP-06 | Overview module (Dashboard KPIs) | Done | 6 KPIs + drill-down by category, segment, territory |
@@ -30,7 +30,8 @@ The MVP is approximately 95% aligned with the original architecture documents. A
 | WP-11 | Confidence module | **Done** | `score_confidence()` integrated — confidence levels computed dynamically |
 | WP-12 | Export (PDF/Excel) | **Partial** | CSV and executive summary JSON available. PDF and Excel not implemented |
 | WP-13 | Production deploy | Done | Railway (frontend + backend + PostgreSQL). Design originally specified Vercel for frontend |
-| WP-14 | Testing + QA | Done | 21 pytest unit tests + 28+ Playwright E2E tests passing |
+| WP-14 | Testing + QA | Done | 56 pytest unit tests + 32 Playwright E2E tests passing |
+| WP-15 | AI Conversational Agent | Done | LangGraph multi-model (Sonnet + Opus), 7 tools, guardrails off-topic (RN-11), dedicated spec in 08-ai-agent-architecture.md |
 
 ---
 
